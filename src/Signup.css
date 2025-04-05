@@ -1,0 +1,103 @@
+.signup-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+  }
+  
+  .form {
+    display: flex;
+    flex-direction: column;
+    padding: 2em;
+    background-color: #ccc8ff;
+    border-radius: 25px;
+    box-shadow: 0px 0px 12px rgba(175, 129, 216, 0.8);
+  }
+  
+  .input-field {
+    padding: 10px;
+    border-radius: 8px;
+    border: 1px solid #6666cc;
+  }
+  
+  .btn {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 1.5em;
+  }
+  
+  .login-button {
+    padding: 10px 20px;
+    border-radius: 20px;
+    background-color: #6a5acd;
+    color: white;
+    cursor: pointer;
+    transition: 0.3s;
+  }
+  
+  .login-button:hover {
+    background-color: #5c4bb1;
+  }
+
+  /* Role Selection Container */
+.role-selection {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 10px;
+  }
+  
+  /* Role Label */
+  .role-label {
+    font-size: 16px;
+    font-weight: bold;
+    color: #4b0082; /* Dark purple for better contrast */
+    margin-bottom: 5px;
+  }
+  
+  /* Dropdown Styling */
+  .dropdown {
+    width: 100%;
+    padding: 10px;
+    font-size: 16px;
+    border: 2px solid #6a5acd;
+    border-radius: 8px;
+    background-color: rgba(255, 255, 255, 0.8);
+    color: #333;
+    transition: 0.3s ease-in-out;
+    outline: none;
+    cursor: pointer;
+  }
+  
+  /* Hover and Focus Effects */
+  .dropdown:hover, .dropdown:focus {
+    background-color: rgba(255, 255, 255, 1);
+    border-color: #5c4bb1;
+    box-shadow: 0px 0px 8px rgba(106, 90, 205, 0.5);
+  }
+  
+  /* Option Styling */
+  .dropdown option {
+    background-color: white;
+    color: #333;
+    padding: 10px;
+  }
+  
+  .password-strength {
+    font-size: 0.9em;
+    margin-top: 5px;
+  }
+  
+  .password-strength.weak {
+    color: red;
+  }
+  
+  .password-strength.good {
+    color: orange;
+  }
+  
+  .password-strength.strong {
+    color: green;
+  }
+  

@@ -1,0 +1,303 @@
+/* --------------------------------
+   GLOBAL & BODY
+----------------------------------- */
+/* General resets and smooth scrolling */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  /* Updated background: Deep Purple Gradient */
+  background: linear-gradient(135deg, #0D0D1A, #1C1C2E);
+  color: #e0e0e0;           /* Light text */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+}
+
+/* Container for overall page layout */
+.page-container {
+  width: 100%;
+  max-width: 1200px;
+  padding: 20px;
+}
+
+/* Container for card and form, ensuring proper spacing */
+.card-and-form {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 40px;
+  margin: 0 auto;
+}
+
+/* --------------------------------
+   FLIP CARD (Retained Design)
+----------------------------------- */
+.flip-card {
+  position: relative;
+  width: 320px;
+  height: 200px;
+  perspective: 1000px;
+}
+
+.flip-card-inner {
+  width: 100%;
+  height: 100%;
+  transition: transform 0.8s ease;
+  transform-style: preserve-3d;
+  --rotation: 0deg;
+}
+
+.flip-card-inner.flipped {
+  --rotation: 180deg;
+}
+
+.flip-card-inner {
+  transform: rotateY(var(--rotation));
+}
+
+.flip-card:hover .flip-card-inner {
+  transform: rotateY(calc(var(--rotation) + 180deg));
+}
+
+.flip-card-front,
+.flip-card-back {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  border-radius: 15px;
+  backface-visibility: hidden;
+  box-shadow: 0 8px 14px rgba(0, 0, 0, 0.3);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 20px;
+  color: #fff;
+}
+
+.flip-card-front {
+  background: linear-gradient(135deg, #5A2D82, #311B92);
+}
+
+.flip-card-back {
+  background: linear-gradient(135deg, #311B92, #5A2D82);
+  transform: rotateY(180deg);
+  text-align: center;
+}
+
+/* Top row within the card */
+.top-elements {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.logo {
+  font-size: 1.2rem;
+  font-weight: 600;
+  letter-spacing: 1px;
+  color: #8e44ad; /* Accent dark purple */
+}
+
+.chip-svg {
+  width: 50px;
+  height: 35px;
+  margin-right: 10px;
+}
+
+.nfc-svg {
+  width: 30px;
+  height: 30px;
+  margin-left: 10px;
+}
+
+/* Information sections in the card */
+.card-front-info,
+.card-back-info {
+  display: flex;
+  flex-direction: column;
+  margin-top: 20px;
+}
+
+.card-front-info {
+  align-items: flex-start;
+}
+
+.card-back-info {
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+}
+
+.label {
+  font-size: 0.9rem;
+  opacity: 0.9;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.value {
+  font-size: 1.1rem;
+  font-weight: 700;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.company-info {
+  margin-top: 10px;
+  font-size: 0.85rem;
+  opacity: 0.8;
+  font-style: italic;
+}
+
+.bottom-elements {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* --------------------------------
+   LOGIN FORM (Dark Theme)
+----------------------------------- */
+.login-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  padding: 2em;
+  background: rgba(20, 20, 20, 0.8);  /* Translucent dark background */
+  border-radius: 25px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
+  width: 350px;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: transform 0.4s ease, border 0.4s ease;
+}
+
+.form:hover {
+  transform: scale(1.03);
+  border: 1px solid rgba(142, 68, 173, 0.5); /* Accent border on hover */
+}
+
+/* Login heading with dark purple color */
+#heading {
+  text-align: center;
+  margin-bottom: 1em;
+  font-size: 1.5em;
+  font-weight: bold;
+  color: #311B92; /* Dark purple text */
+}
+
+/* Error message styling */
+.error {
+  color: #ff4d4d;
+  font-size: 0.9rem;
+  text-align: center;
+  margin-top: -0.5rem;
+}
+
+/* Input fields with black text, no shadows */
+.input-field {
+  width: 100%;
+  padding: 12px;
+  border-radius: 20px;
+  border: none;
+  outline: none;
+  background: rgba(255, 255, 255, 0.05);
+  color: #000; /* Black text */
+  font-size: 1em;
+  transition: background 0.3s ease;
+}
+
+.input-field:focus {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* Buttons container */
+.form .btn {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 15px;
+}
+
+/* Animated Login Button with Enhanced Gradient */
+.animated-login-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 140px;
+  height: 50px;
+  border-radius: 25px;
+  cursor: pointer;
+  background: linear-gradient(to right, #8e44ad, #2980b9);
+  color: #fff;
+  font-weight: 600;
+  font-size: 16px;
+  border: none;
+  outline: none;
+  position: relative;
+  transition: background 0.3s ease;
+}
+
+.animated-login-button:hover {
+  background: linear-gradient(to right, #2980b9, #8e44ad);
+}
+
+.lock-icon {
+  width: 22px;
+  height: 22px;
+  fill: #fff;
+}
+
+.animated-login-button:hover .lock-shackle {
+  transform: translateY(-2px) rotate(15deg);
+  transition: transform 0.4s ease;
+  transform-origin: center bottom;
+}
+
+.animated-login-button span {
+  transition: transform 0.3s ease;
+}
+
+.animated-login-button:hover span {
+  transform: translateX(5px);
+}
+
+/* Sign Up Button matching the style */
+.button2 {
+  width: 140px;
+  height: 50px;
+  border-radius: 25px;
+  cursor: pointer;
+  background: linear-gradient(to right, #8e44ad, #2980b9);
+  color: #fff;
+  font-weight: 600;
+  font-size: 16px;
+  border: none;
+  outline: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.3s ease;
+}
+
+.button2:hover {
+  background: linear-gradient(to right, #2980b9, #8e44ad);
+}

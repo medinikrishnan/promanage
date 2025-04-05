@@ -1,0 +1,248 @@
+/*******************************************************
+  SKILLS PAGE CONTAINER & HEADINGS
+*******************************************************/
+.skills-container {
+  max-width: 1000px;
+  margin: 4rem auto;
+  padding: 2rem;
+  background: linear-gradient(135deg, #1f1f1f, #2c2c3c);
+  border-radius: 12px;
+  box-shadow: 0 8px 16px rgba(0,0,0,0.4);
+  position: relative;
+  z-index: 1;
+}
+
+.skills-container h2 {
+  text-align: center;
+  font-size: 2rem;
+  margin-bottom: 1.5rem;
+  color: #e0e0e0;
+  text-shadow: 1px 1px 3px rgba(0,0,0,0.4);
+  letter-spacing: 1px;
+}
+
+.skills-wrapper {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2rem;
+  margin-bottom: 2rem;
+}
+
+/*******************************************************
+  USER SKILLS (SELECTED) SECTION
+*******************************************************/
+.user-skills {
+  flex: 1;
+  min-width: 250px;
+  background: rgba(0,0,0,0.15);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 8px;
+  padding: 1rem;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+.user-skills h3 {
+  font-size: 1.2rem;
+  margin-bottom: 0.8rem;
+  color: #8e44ad;
+  text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+}
+
+.skills-list-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.skill-chip {
+  background: #8e44ad;
+  color: #fff;
+  padding: 0.4rem 0.8rem;
+  border-radius: 999px;
+  font-size: 0.9rem;
+  display: inline-block;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+
+.no-skills {
+  color: #aaa;
+  font-style: italic;
+}
+
+/*******************************************************
+  DOMAINS GRID
+*******************************************************/
+.domains-grid {
+  flex: 2;
+  min-width: 300px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 1.5rem;
+}
+
+/*******************************************************
+  DOMAIN BOX & BUTTON
+*******************************************************/
+.domain-box {
+  background: rgba(0,0,0,0.15);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 8px;
+  padding: 1rem;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+  position: relative;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.domain-box:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 16px rgba(0,0,0,0.4);
+}
+
+.domain-btn {
+  display: block;
+  width: 100%;
+  text-align: center;
+  background: #8e44ad;
+  color: #fff;
+  padding: 0.6rem;
+  border: none;
+  border-radius: 5px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background-color 0.3s, transform 0.2s;
+  margin-bottom: 0.6rem;
+}
+.domain-btn:hover {
+  background: #732d91;
+  transform: scale(1.02);
+}
+.domain-btn.selected {
+  background: #6b0cbe; /* A contrasting color to show selection */
+}
+
+/*******************************************************
+  SKILLS LIST (CHECKBOXES)
+*******************************************************/
+.skills-list {
+  margin-top: 0.5rem;
+  border-top: 1px dashed rgba(255,255,255,0.2);
+  padding-top: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+/*******************************************************
+  CUSTOM CHECKBOX (checkbox-wrapper-12)
+*******************************************************/
+.checkbox-wrapper-12 {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
+  gap: 0.5rem;
+}
+
+.cbx {
+  position: relative;
+  width: 22px;
+  height: 22px;
+  border: 2px solid rgba(255,255,255,0.3);
+  border-radius: 4px;
+  transition: all 0.3s ease;
+  overflow: hidden;
+  box-shadow: inset 0 0 4px rgba(0,0,0,0.4);
+}
+
+.cbx input[type="checkbox"] {
+  position: absolute;
+  opacity: 0;
+  cursor: pointer;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+}
+.cbx input[type="checkbox"]:hover + label {
+  background: rgba(255,255,255,0.1);
+}
+
+.cbx label {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: none;
+  pointer-events: none;
+  transition: background 0.3s ease;
+  border-radius: 4px;
+}
+
+.cbx svg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 22px;
+  height: 22px;
+  stroke: #fff;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  overflow: visible;
+  stroke-dasharray: 29;
+  stroke-dashoffset: 29;
+  transition: stroke-dashoffset 0.3s ease;
+}
+
+/* When checked, reveal the checkmark */
+.cbx input[type="checkbox"]:checked + label + svg path {
+  stroke-dashoffset: 0;
+}
+
+/*******************************************************
+  FINISH BUTTON & CUBE ANIMATION
+*******************************************************/
+.login-button {
+  display: inline-block;
+  background-color: #8e44ad;
+  color: #fff;
+  padding: 0.75rem 1.5rem;
+  margin-top: 1rem;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.3s ease, transform 0.2s ease;
+  font-size: 1rem;
+  position: relative;
+  overflow: hidden; /* so cubes appear from the button center */
+}
+
+.login-button:hover {
+  background-color: #732d91;
+  transform: scale(1.03);
+}
+
+.cube {
+  position: absolute;
+  width: 8px; /* Will be overridden by JS for random sizing */
+  height: 8px; /* Will be overridden by JS for random sizing */
+  background-color: #3f0e8a; /* Purple cubes */
+  border-radius: 2px;
+  animation: pop 0.8s forwards ease-out;
+  pointer-events: none;
+  z-index: 9999;
+}
+
+@keyframes pop {
+  0% {
+    transform: translate(0, 0) scale(1);
+    opacity: 1;
+  }
+  80% {
+    transform: translate(var(--x-move), var(--y-move)) scale(0.9);
+    opacity: 0.9;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--x-move), var(--y-move)) scale(0.5);
+  }
+}

@@ -1,0 +1,123 @@
+/* -------------------------------------------------- */
+/* CUSTOM PROPERTIES (THEME COLORS) */
+/* -------------------------------------------------- */
+:root {
+  --dark-purple: #4B0082;
+  --dark-blue: #303038;
+  --hover-border: #e46af4; /* Constant color for hover borders */
+  --accent-gold: #FFD700;
+}
+
+/* -------------------------------------------------- */
+/* ADVANCED PROJECTS CONTAINER STYLING */
+/* -------------------------------------------------- */
+.projects-container {
+  position: relative;
+  padding: 2rem;
+  margin: 2rem auto;
+  max-width: 1200px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, var(--dark-purple), var(--dark-blue));
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+  color: #fff;
+  overflow: hidden;
+  z-index: 0;
+}
+
+.projects-container::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(45deg, var(--dark-purple), var(--dark-blue));
+  opacity: 0.2;
+  mix-blend-mode: overlay;
+  pointer-events: none;
+}
+
+.projects-container h3 {
+  font-size: 2rem;
+  text-align: center;
+  margin-bottom: 1.5rem;
+  text-shadow: 2px 2px 4px rgba(111, 24, 140, 0.5);
+  letter-spacing: 1px;
+}
+
+/* -------------------------------------------------- */
+/* ADVANCED PROJECT ITEM STYLING */
+/* -------------------------------------------------- */
+.project-item {
+  position: relative;
+  background: linear-gradient(135deg, rgba(60, 8, 86, 0.85), rgba(0, 0, 139, 0.85));
+  padding: 1.5rem 2rem;
+  margin-bottom: 1.5rem;
+  border-radius: 10px;
+  border: 2px solid transparent;
+  transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+  overflow: hidden;
+}
+
+.project-item:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.5);
+  border-color: var(--hover-border);
+}
+
+/* Emphasized text (project title, etc.) */
+.project-item strong {
+  font-size: 1.4rem;
+  color: var(--hover-border);
+  text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.4);
+}
+
+/* -------------------------------------------------- */
+/* NESTED LISTS FOR TASKS, SUBTASKS & MILESTONES */
+/* -------------------------------------------------- */
+
+/* Styling for first-level list inside a project item (e.g., tasks) */
+.project-item ul {
+  margin-top: 1rem;
+  padding-left: 2rem;
+  border-left: 2px solid rgba(255, 255, 255, 0.3);
+}
+
+/* Styling for each list item at the first level (tasks) */
+.project-item li {
+  margin-bottom: 0.75rem;
+  padding: 0.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 5px;
+  font-size: 1rem;
+  background: rgba(0, 0, 0, 0.15);
+}
+
+/* Nested list (for subtasks) */
+.project-item li ul {
+  margin-top: 0.5rem;
+  padding-left: 1.5rem;
+  border-left: 2px dashed rgba(255, 255, 255, 0.3);
+}
+
+/* Each nested list item (subtasks and milestones) */
+.project-item li ul li {
+  margin-bottom: 0.5rem;
+  padding: 0.3rem;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 3px;
+  font-size: 0.95rem;
+  background: rgba(0, 0, 0, 0.1);
+}
+
+/* -------------------------------------------------- */
+/* RESPONSIVE ADJUSTMENTS */
+/* -------------------------------------------------- */
+@media (max-width: 768px) {
+  .projects-container {
+    padding: 1rem;
+  }
+  .project-item {
+    padding: 1rem 1.5rem;
+  }
+  .projects-container h3 {
+    font-size: 2rem;
+  }
+}

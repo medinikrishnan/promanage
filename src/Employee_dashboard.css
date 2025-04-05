@@ -1,0 +1,371 @@
+/* -------------------------------------------------- */
+/* RESET & GLOBAL STYLES */
+/* -------------------------------------------------- */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  background-color: #121212;
+  color: #e0e0e0;
+  width: 100%;
+  height: 100%;
+  overflow-x: hidden;
+}
+
+.reveal {
+  opacity: 0;
+  transform: translateY(50px);
+  transition: all 0.8s ease;
+}
+.reveal.active {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* -------------------------------------------------- */
+/* CUSTOM PROPERTIES (THEME COLORS) */
+/* -------------------------------------------------- */
+:root {
+  --dark-purple: #4B0082;
+  --dark-blue: #00008B;
+  --hover-border: #8e44ad;
+  --text-purple: #BB86FC; /* Light purple for text */
+  --accent-gold: #FFD700;
+}
+
+/* -------------------------------------------------- */
+/* DASHBOARD LAYOUT */
+/* -------------------------------------------------- */
+.dashboard {
+  display: flex;
+  height: 100vh;
+}
+
+/* -------------------------------------------------- */
+/* SIDEBAR */
+/* -------------------------------------------------- */
+.sidebar {
+  background: linear-gradient(160deg, #1f1f1f 40%, #2c2c3c 100%);
+  width: 250px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  transition: width 0.3s ease-in-out;
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100vh;
+  z-index: 2;
+  box-shadow: 2px 0 5px rgba(0, 0, 0, 0.4);
+}
+.sidebar.collapsed {
+  width: 80px;
+}
+.sidebar-menu {
+  display: flex;
+  flex-direction: column;
+  margin-top: 20px;
+}
+.menu-item {
+  display: flex;
+  align-items: center;
+  padding: 12px;
+  color: #e0e0e0;
+  text-decoration: none;
+  border-radius: 5px;
+  transition: background-color 0.2s ease, transform 0.2s ease;
+}
+.menu-item:hover {
+  background-color: #8e44ad;
+  transform: translateX(5px);
+}
+.menu-item .icon {
+  font-size: 20px;
+  margin-right: 15px;
+}
+.sidebar.collapsed .menu-item span {
+  display: none;
+}
+
+/* -------------------------------------------------- */
+/* MAIN CONTENT */
+/* -------------------------------------------------- */
+.main-content {
+  flex-grow: 1;
+  margin-left: 250px;
+  margin-top: 80px;
+  transition: margin-left 0.3s ease-in-out;
+}
+.main-content.collapsed {
+  margin-left: 80px;
+  margin-top: 80px;
+}
+
+/* -------------------------------------------------- */
+/* TOPBAR */
+/* -------------------------------------------------- */
+.topbar {
+  background: linear-gradient(160deg, #1f1f1f 0%, #1e1e2f 100%);
+  color: #e0e0e0;
+  display: flex;
+  align-items: center;
+  padding: 15px 20px;
+  width: 100%;
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 1;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.4);
+}
+.topbar-title {
+  font-size: 24px;
+  font-weight: bold;
+  color: #8e44ad;
+  margin-right: auto;
+}
+.topbar-icons {
+  display: flex;
+  gap: 15px;
+}
+.topbar-icons i {
+  font-size: 20px;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+.topbar-icons i:hover {
+  transform: scale(1.1);
+}
+
+/* -------------------------------------------------- */
+/* MILESTONES CONTAINER & SUBTASK STYLING */
+/* -------------------------------------------------- */
+.milestones-container {
+  position: relative;
+  padding: 2rem;
+  margin: 2rem auto;
+  max-width: 1200px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, var(--dark-purple), var(--dark-blue));
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+  color: #fff;
+  overflow: hidden;
+  z-index: 0;
+}
+.milestones-container::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(45deg, var(--dark-purple), var(--dark-blue));
+  opacity: 0.2;
+  mix-blend-mode: overlay;
+  pointer-events: none;
+}
+.milestones-container h3 {
+  font-size: 2.5rem;
+  text-align: center;
+  margin-bottom: 1.5rem;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+  letter-spacing: 1px;
+  color: var(--text-purple);
+}
+
+/* Each subtask block */
+.subtask {
+  background: linear-gradient(135deg, rgba(60,54,63,0.85), rgba(4, 4, 32, 0.85));
+  padding: 1.5rem 2rem;
+  margin-bottom: 1.5rem;
+  border-radius: 10px;
+  border: 2px solid transparent;
+  transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+.subtask:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 12px 24px rgba(0,0,0,0.5);
+  border-color: var(--hover-border);
+}
+.subtask h3 {
+  font-size: 1.8rem;
+  margin-bottom: 1rem;
+  color: var(--text-purple);
+}
+
+/* Nested lists for milestones */
+.subtask ul {
+  margin-top: 1rem;
+  padding-left: 2rem;
+  border-left: 2px solid rgba(255,255,255,0.3);
+}
+.subtask li {
+  margin-bottom: 0.75rem;
+  padding: 0.5rem;
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 5px;
+  font-size: 1rem;
+  background: rgba(0,0,0,0.15);
+  color: var(--text-purple);
+}
+
+/* Complete button styling */
+.complete-btn {
+  margin-left: 1rem;
+  padding: 0.3rem 0.8rem;
+  border: none;
+  border-radius: 5px;
+  background-color: #8e44ad;
+  color: #fff;
+  cursor: pointer;
+  transition: background-color 0.3s ease, transform 0.2s ease;
+}
+.complete-btn:hover {
+  background-color: #732d91;
+  transform: scale(1.05);
+}
+.complete-btn:disabled {
+  background-color: #444;
+  cursor: not-allowed;
+}
+
+/* Optional animated gradient border for subtask */
+/* The pseudo-element no longer becomes visible on hover */
+.subtask::before {
+  content: "";
+  position: absolute;
+  top: -5px;
+  left: -5px;
+  right: -5px;
+  bottom: -5px;
+  background: linear-gradient(135deg, #2c2c3c, #1f1f1f);
+  filter: blur(8px);
+  opacity: 0; /* Remains hidden, removing the color shift */
+  transition: opacity 0.3s ease;
+  z-index: -1;
+}
+/* Removed the line that changed opacity to 1 on hover */
+
+/* -------------------------------------------------- */
+/* CLIMBING ANIMATION LOADER (OVERLAY) */
+/* -------------------------------------------------- */
+.loader {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 200px;
+  height: 200px;
+  z-index: 10;
+}
+.person {
+  position: absolute;
+  bottom: 10px;
+  left: 10px;
+  width: 30px;
+  height: 30px;
+  background: linear-gradient(135deg, #ff6b6b, #ffb142);
+  border-radius: 50%;
+  animation: climb 5s ease-in-out infinite;
+}
+.steps {
+  position: absolute;
+  bottom: 0;
+  left: 50px;
+}
+.step {
+  width: 40px;
+  height: 10px;
+  background: #2a9d8f;
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  box-shadow: 0 3px 5px rgba(0,0,0,0.3);
+}
+.step:nth-child(1) { bottom: 0px; left: 0px; }
+.step:nth-child(2) { bottom: 20px; left: 40px; }
+.step:nth-child(3) { bottom: 40px; left: 80px; }
+.step:nth-child(4) { bottom: 60px; left: 120px; }
+.step:nth-child(5) { bottom: 80px; left: 160px; }
+
+@keyframes climb {
+  0% { bottom: 10px; left: 10px; }
+  20% { bottom: 20px; left: 50px; }
+  40% { bottom: 40px; left: 90px; }
+  60% { bottom: 60px; left: 130px; }
+  80% { bottom: 80px; left: 170px; }
+  100% { bottom: 80px; left: 170px; }
+}
+
+/* -------------------------------------------------- */
+/* RESPONSIVE ADJUSTMENTS */
+/* -------------------------------------------------- */
+@media (max-width: 768px) {
+  .milestones-container {
+    padding: 1rem;
+  }
+  .subtask {
+    padding: 1rem 1.5rem;
+  }
+  .milestones-container h3 {
+    font-size: 2rem;
+  }
+}
+
+/* -------------------------------------- */
+/* FLEX LAYOUT FOR MILESTONES + LOADER    */
+/* -------------------------------------- */
+.milestones-flex {
+  display: flex;
+  align-items: flex-start; /* Align top edges */
+  justify-content: space-between;
+  gap: 2em; /* Space between tasks and loader */
+}
+
+/* Tasks section can grow, loader is fixed size */
+.tasks-section {
+  flex: 1;
+}
+
+/* Loader container to fix the size and position of the climbing animation */
+.loader-container {
+  position: relative;
+  width: 200px;
+  height: 200px;
+  flex-shrink: 0;
+}
+
+/* -------------------------------------- */
+/* RE-THEMING THE CLIMBING ANIMATION      */
+/* -------------------------------------- */
+/* The .loader, .person, .steps, .step classes exist in your code.
+   We only override the colors to match your dark purple theme. */
+
+/* Person (ball) with a purple gradient */
+.person {
+  background: linear-gradient(135deg, #BB86FC, #8e44ad);
+  border-radius: 50%;
+  animation: climb 5s ease-in-out infinite;
+}
+
+/* Steps with a subtle purple/blue accent */
+.steps .step {
+  background: #5f4b8b; /* a dusty purple/blue that complements the background */
+}
+
+/* Optional: Adjust step size or shape if you like
+.steps .step {
+  width: 35px;
+  height: 8px;
+  border-radius: 2px;
+  background: #5f4b8b;
+  ...
+} */
+
+/* You can keep or remove the original shadows, keyframes, etc. */

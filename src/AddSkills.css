@@ -1,0 +1,152 @@
+/* =========================================
+   MERGED CSS FOR AddSkills AND BurntScore
+   Incorporating a purple gradient background
+   ========================================= */
+
+/* 1. AddSkills container - Purple gradient background */
+.add-skills-container {
+    /* Replace the solid background with a gradient */
+    background: linear-gradient(115deg, #311a52 0%, #4d126b 100%);
+    border: 1px solid #eee;
+    padding: 20px;
+    border-radius: 8px;
+    margin-top: 20px;
+  }
+  
+  /* Error and success messages */
+  .error-message {
+    color: #ff4d4d;
+    margin-bottom: 10px;
+    font-weight: 600;
+  }
+  
+  .success-message {
+    color: #28a745;
+    margin-bottom: 10px;
+    font-weight: 600;
+  }
+  
+  /* The form in AddSkills */
+  .add-skills-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+  
+  /* Each input field group */
+  .form-group label {
+    font-weight: bold;
+    display: block;
+    margin-bottom: 5px;
+    color: #fff; /* White text for contrast on gradient */
+  }
+  
+  .form-group input {
+    padding: 0.6rem;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    width: 250px; /* Adjust as needed */
+    font-size: 1rem;
+  }
+  
+  /* The "Add Skills" button */
+  .add-skills-btn {
+    background-color: #931ac6; /* A darker purple accent */
+    color: #ffffff;
+    border: none;
+    padding: 0.75rem 1.25rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 1rem;
+    transition: background-color 0.2s ease;
+    max-width: 150px; /* Adjust as needed */
+    margin-top: 1rem;
+  }
+  
+  .add-skills-btn:hover {
+    background-color: #32007e; /* Even darker on hover */
+  }
+  
+  /* =========================================
+     2. Burnt Score Page
+     ========================================= */
+  .burnt-score-page {
+    /* Purple gradient background */
+    background: linear-gradient(120deg, #331064 0%, #50156d 100%);
+    padding: 20px;
+    font-family: Arial, sans-serif;
+    border-radius: 8px;
+    color: #fff; /* White text for better visibility */
+  }
+  
+  /* Reuse the error message styling from above if needed
+     or define separately if you want a different color. */
+  
+  /* Projects Section */
+  .projects-section {
+    margin-bottom: 20px;
+  }
+  
+  /* Project List */
+  .project-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+  
+  .project-item {
+    padding: 8px;
+    margin: 4px 0;
+    background-color: rgba(255, 255, 255, 0.15);
+    /* slight white overlay on gradient background */
+    border: 1px solid #ccc;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    color: #fff;
+  }
+  
+  .project-item:hover {
+    background-color: rgba(255, 255, 255, 0.25);
+  }
+  
+  .project-item.active {
+    background-color: rgba(255, 255, 255, 0.35);
+    font-weight: bold;
+  }
+  
+  /* Burnt Scores Section */
+  .burnt-scores-section {
+    margin-top: 20px;
+  }
+  
+  /* Table for Burnt Scores */
+  .burnt-score-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+    background-color: #fff; /* White background for better readability */
+    color: #333; /* Dark text */
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  
+  .burnt-score-table th,
+  .burnt-score-table td {
+    border: 1px solid #ccc;
+    padding: 8px;
+    text-align: center;
+  }
+  
+  .burnt-score-table th {
+    background-color: #f5f5f5; /* Light gray header */
+  }
+  
+  /* Team Average styling */
+  .team-average {
+    margin-top: 10px;
+    font-size: 1.1rem;
+    font-weight: bold;
+    color: #fff; /* White text on gradient background */
+  }
+  
