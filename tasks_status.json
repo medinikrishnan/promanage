@@ -1,0 +1,32 @@
+{
+    "form_task": {
+        "name": "User Form Task",
+        "subtasks": {
+            "create_form": {
+                "name": "Create a form with required inputs",
+                "milestones": {
+                    "milestone1": {
+                        "description": "Create a form container",
+                        "completed": true
+                    },
+                    "milestone2": {
+                        "description": "Include a name input field",
+                        "completed": true
+                    },
+                    "milestone3": {
+                        "description": "Include an age input field",
+                        "completed": true
+                    },
+                    "milestone4": {
+                        "description": "Include a phone number input field",
+                        "completed": true
+                    },
+                    "milestone5": {
+                        "description": "Include a submit button",
+                        "completed": true
+                    }
+                }
+            }
+        }
+    }
+}
