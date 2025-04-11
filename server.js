@@ -1541,6 +1541,173 @@ app.post("/api/predict", async (req, res) => {
   }
 });
 
+app.get("/api/generate-tasks-preview", async (req, res) => {
+  try {
+    const { project_id, feedback } = req.query;
+    if (!project_id) {
+      return res.status(400).json({ error: "project_id is required" });
+    }
+
+    // Retrieve the project description from the database
+    const project = await Project.findOne({ where: { project_id } });
+    if (!project) {
+      return res.status(404).json({ error: "Project not found" });
+    }
+
+    // Construct the prompt for the OpenAI API
+    const prompt = `
+You are an AI-powered project manager. Given the following project description and optional manager feedback, generate realistic tasks, subtasks, and milestones needed to complete the project.
+
+### Project Description:
+${project.project_description}
+
+${feedback ? "Manager Feedback: " + feedback : ""}
+
+### Rules for Task Generation:
+- List tasks as categories (e.g., Backend, Frontend, etc.).
+- Each category must include at least 2–3 tasks.
+- Every task must include a "subtasks" key.
+- Each subtask must include exactly 5 milestones.
+- Milestones should represent small, clear steps toward completing the subtask.
+- Return only a valid JSON object in the following format (no additional text):
+
+{
+  "tasks": [
+    {
+      "category": "Category Name",
+      "tasks": [
+        {
+          "task": "Task Name",
+          "subtasks": [
+            {
+              "name": "Subtask Name",
+              "milestones": [
+                {"name": "Milestone 1"},
+                {"name": "Milestone 2"},
+                {"name": "Milestone 3"},
+                {"name": "Milestone 4"},
+                {"name": "Milestone 5"}
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
+    `;
+
+    // Call the OpenAI API (using your API key stored in your environment variables)
+    const openaiApiKey = process.env.OPENAI_API_KEY;
+    const openaiUrl = "https://api.openai.com/v1/chat/completions";
+
+    const openaiResponse = await axios.post(
+      openaiUrl,
+      {
+        model: "gpt-3.5-turbo",
+        messages: [
+          { role: "system", content: "You are a project management assistant." },
+          { role: "user", content: prompt },
+        ],
+        max_tokens: 800,
+        temperature: 0.7,
+      },
+      {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${openaiApiKey}`,
+        },
+      }
+    );
+
+    const responseContent = openaiResponse.data.choices[0].message.content.trim();
+
+    // Attempt to parse the response as JSON
+    try {
+      const previewData = JSON.parse(responseContent);
+      return res.status(200).json(previewData);
+    } catch (jsonError) {
+      console.error("JSON Parse Error:", jsonError, "Raw response:", responseContent);
+      return res
+        .status(500)
+        .json({ error: "Invalid JSON response from OpenAI", raw_response: responseContent });
+    }
+  } catch (error) {
+    console.error("Error in /api/generate-tasks-preview:", error);
+    return res.status(500).json({ error: "Failed to generate tasks preview" });
+  }
+});
+
+app.post("/api/confirm-tasks", async (req, res) => {
+  try {
+    const { project_id, tasks: tasksPreview } = req.body;
+    if (!project_id || !tasksPreview) {
+      return res.status(400).json({ error: "project_id and tasks preview are required" });
+    }
+
+    // Iterate over each task category in the preview
+    for (const category of tasksPreview.tasks || []) {
+      for (const taskData of category.tasks || []) {
+        // Create a Task record
+        const taskRecord = await Task.create({
+          name: taskData.task || "Unnamed Task",
+          project_id,
+          status: 0,
+        });
+
+        // Process subtasks for this task
+        if (Array.isArray(taskData.subtasks) && taskData.subtasks.length > 0) {
+          for (const subtaskData of taskData.subtasks) {
+            // Here we must use the correct model name: "SubTask" (with a capital T)
+            const subtaskRecord = await SubTask.create({
+              name: subtaskData.name || "Unnamed Subtask",
+              task_id: taskRecord.id,
+            });
+
+            // Create milestones: expect exactly 5 milestones per subtask
+            if (Array.isArray(subtaskData.milestones) && subtaskData.milestones.length === 5) {
+              for (const milestoneData of subtaskData.milestones) {
+                await Milestone.create({
+                  name: milestoneData.name || "Unnamed Milestone",
+                  subtask_id: subtaskRecord.id,
+                  status: 0,
+                });
+              }
+            } else {
+              // If milestones are missing or not exactly 5, create 5 default milestones.
+              for (let i = 1; i <= 5; i++) {
+                await Milestone.create({
+                  name: `Default Milestone ${i}`,
+                  subtask_id: subtaskRecord.id,
+                  status: 0,
+                });
+              }
+            }
+          }
+        } else {
+          // If no subtasks are provided, create one default subtask with 5 default milestones.
+          const defaultSubtask = await SubTask.create({
+            name: "Default Subtask",
+            task_id: taskRecord.id,
+          });
+          for (let i = 1; i <= 5; i++) {
+            await Milestone.create({
+              name: `Default Milestone ${i}`,
+              subtask_id: defaultSubtask.id,
+              status: 0,
+            });
+          }
+        }
+      }
+    }
+
+    return res.status(200).json({ message: "Tasks confirmed and saved successfully" });
+  } catch (error) {
+    console.error("Error in /api/confirm-tasks:", error);
+    return res.status(500).json({ error: "Failed to confirm tasks" });
+  }
+});
+
 
 // Start Server
 const PORT = process.env.PORT || 5000;
