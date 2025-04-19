@@ -18,28 +18,5 @@
       <li><strong>updatedAt</strong>: DATETIME, defaults to current_timestamp, automatically updates on record change</li>
     </ul>
     <p>This schema has been implemented in our models and reflects all required attributes for the user domain.</p>
-    <h1>Create Relationship Between Tables</h1>
-    <p>
-      All necessary relationships between the tables in the database have been established.
-      The system uses proper foreign key constraints to ensure referential integrity between the tables.
-      For example, the <strong>Users</strong> table is linked to the <strong>Orders</strong> table via the user_id,
-      and other tables such as <strong>Profiles</strong> and <strong>Payments</strong> are similarly connected.
-    </p>
-    <h2>Defined Relationships:</h2>
-    <ul>
-      <li>
-        <strong>Users & Orders:</strong> The <code>user_id</code> in the Users table is referenced by the <code>customer_id</code> in the Orders table.
-      </li>
-      <li>
-        <strong>Users & Profiles:</strong> The <code>user_id</code> in the Users table is used as the primary key and is referenced in the Profiles table to uniquely map each user.
-      </li>
-      <li>
-        <strong>Orders & Payments:</strong> The Orders table’s <code>order_id</code> serves as a reference in the Payments table to relate each payment with the corresponding order.
-      </li>
-    </ul>
-    <p>
-      These relationships have been implemented using foreign key constraints in the database schema,
-      ensuring that the data remains consistent and that the tables are properly connected.
-    </p>
   </body>
 </html>

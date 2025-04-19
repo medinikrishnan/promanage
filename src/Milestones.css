@@ -1,0 +1,61 @@
+/* Container for the content */
+.content-container {
+    padding: 20px;
+    background-color: #c234e1;
+    border-radius: 6px;
+    box-shadow: 0 2px 4px rgba(96, 40, 99, 0.1);
+    margin: 20px;
+  }
+  
+  /* Main Title */
+  .content-container h2 {
+    margin-bottom: 20px;
+    font-size: 24px;
+    color: #333;
+    text-align: center;
+  }
+  
+  /* Milestones list styling */
+  .content-container ul {
+    list-style: none; /* Remove default bullets */
+    padding-left: 0;
+    margin: 0;
+  }
+  
+  .content-container ul li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    margin-bottom: 10px;
+    background-color: #701383;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    transition: background-color 0.3s ease, transform 0.2s ease;
+  }
+  
+  .content-container ul li:hover {
+    background-color: #61516c;
+    transform: translateY(-1px);
+  }
+  
+  /* Complete button styling */
+  .complete-btn {
+    background-color: #520886;  /* Green */
+    color: #fff;
+    border: none;
+    padding: 8px 16px;
+    font-size: 14px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s ease, transform 0.1s ease;
+  }
+  
+  .complete-btn:hover {
+    background-color: #5a2188;
+  }
+  
+  .complete-btn:active {
+    transform: scale(0.98);
+  }
+  

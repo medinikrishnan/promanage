@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import "./BurntScorePage.css";
-import { FaBars, FaHome,FaFireAlt,FaCommentAlt, FaClipboardList,FaSignOutAlt,FaStar,FaNewspaper, FaProjectDiagram, FaUserCog, FaUsers, FaChartBar, FaTasks, FaClock, FaLink } from "react-icons/fa";
+import { FaBars, FaGamepad, FaHome,FaFireAlt,FaCommentAlt, FaClipboardList,FaSignOutAlt,FaStar,FaNewspaper, FaProjectDiagram, FaUserCog, FaUsers, FaChartBar, FaTasks, FaClock, FaLink } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import "./ProjectManagerDashboard.css"; // Ensure this includes the base styles for sidebar, topbar, etc.
 import "./RatingPopup.css";   
@@ -114,6 +114,9 @@ const BurntScorePage = () => {
           </div>
           <div className="menu-item" onClick={() => navigate("/burnt-score")}>
           <FaFireAlt className="icon" /> {!isCollapsed && <span>Burnt Score</span>}
+          </div>
+          <div className="menu-item" onClick={() => navigate("/gamify")}>
+          <FaGamepad className="icon" />{!isCollapsed && <span>Gamify</span>}
           </div>
         </div>
       </div>

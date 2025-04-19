@@ -359,13 +359,28 @@ body {
   background: #5f4b8b; /* a dusty purple/blue that complements the background */
 }
 
-/* Optional: Adjust step size or shape if you like
-.steps .step {
-  width: 35px;
-  height: 8px;
-  border-radius: 2px;
-  background: #5f4b8b;
-  ...
-} */
-
-/* You can keep or remove the original shadows, keyframes, etc. */
+.badge-wrapper {
+  position: relative;
+  display: inline-block;
+}
+.badge-tooltip {
+  visibility: hidden;
+  background-color: #555;
+  color: #fff;
+  text-align: center;
+  padding: 4px 8px;
+  border-radius: 4px;
+  position: absolute;
+  z-index: 1;
+  bottom: -125%; /* Position tooltip above the icon */
+  left: 50%;
+  transform: translateX(-50%);
+  opacity: 0;
+  transition: opacity 0.3s;
+  white-space: nowrap;
+  font-size: 12px;
+}
+.badge-wrapper:hover .badge-tooltip {
+  visibility: visible;
+  opacity: 1;
+}

@@ -1,8 +1,14 @@
+#!/usr/bin/env python3
 import sys
 import os
+import glob
+import json
 import time
+
 import openai
+from openai.error import RateLimitError
 from dotenv import load_dotenv
+
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
@@ -10,136 +16,182 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.options import Options
 
 # -----------------------------
-# Load environment variables and set OpenAI API key
+# Load environment variables
 # -----------------------------
 load_dotenv()
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
-def check_task_completion_with_gpt(file_path, domain, milestone_text):
-    """
-    Reads the code from the specified file and uses OpenAI's ChatCompletion
-    to determine whether the milestone 'milestone_text' in the given 'domain' is completed.
-    Returns True if the response is "YES", else False.
-    """
-    try:
-        with open(file_path, 'r', encoding='utf-8') as f:
-            code_content = f.read()
-    except Exception as e:
-        print(f"Error reading file {file_path}: {e}")
-        return False
 
-    prompt = f"""
-You are an expert code reviewer specialized in {domain} development.
+def get_last_n_files(dir_path, patterns, n=3):
+    files = []
+    for pat in patterns:
+        files.extend(glob.glob(os.path.join(dir_path, pat)))
+    return sorted(set(files), key=os.path.getmtime, reverse=True)[:n]
 
-Given the following milestone in the {domain} domain: "{milestone_text}"
 
-And examining the following file content:
-
-{code_content}
-
-Determine if this milestone is fully accomplished.
-Just answer "YES" if it has been completed, or "NO" if it has not.
-    """
-
-    try:
-        response = openai.ChatCompletion.create(
-            model="gpt-4",  # or 'gpt-3.5-turbo'
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0  # deterministic output
+def check_milestones_from_text(aggregated_text, domain, model="gpt-4"):
+    system_msg = {
+        "role": "system",
+        "content": (
+            "You are a project-management assistant. You MUST return only a JSON object "
+            "mapping each milestone text to \"YES\" or \"NO\". No additional text."
         )
-    except Exception as api_err:
-        print(f"Error calling OpenAI API: {api_err}")
-        return False
+    }
+    user_msg = {
+        "role": "user",
+        "content": f"""
+Below are the milestone names (one per line) for the {domain} domain.
+Tell me for each one whether it is completed. Return strictly JSON:
+
+{aggregated_text}
+
+Example:
+{{
+  "Create Tables": "YES",
+  "Define Indexes": "NO"
+}}
+"""
+    }
+
+    resp = openai.ChatCompletion.create(
+        model=model,
+        messages=[system_msg, user_msg],
+        temperature=0
+    )
+    return resp.choices[0].message.content.strip()
+
+def mark_specific_milestone_completed(milestone_name, employee_email):
+    """
+    Uses Selenium to log in, navigate to My Milestones in your React sidebar,
+    and click the Complete button for the given milestone_name.
+    """
+    chrome_options = Options()
+    chrome_options.add_argument("--remote-allow-origins=*")
+    chrome_options.add_experimental_option("prefs", {
+        "credentials_enable_service": False,
+        "profile.password_manager_enabled": False
+    })
+    driver = webdriver.Chrome(options=chrome_options)
+    wait = WebDriverWait(driver, 15)
 
     try:
-        answer = response['choices'][0]['message']['content'].strip().upper()
-        print("OpenAI API answer:", answer)
-        return answer == "YES"
-    except (KeyError, IndexError) as parse_err:
-        print("Error parsing OpenAI response:", parse_err)
-        return False
+        driver.maximize_window()
 
-def mark_specific_milestone_completed(milestone_name):
-    """
-    Uses Selenium to:
-      1. Log in to the dashboard at http://localhost:3000/login using hardcoded credentials.
-      2. Navigate to "My Projects" then "My Milestones".
-      3. Locate the specific milestone that contains milestone_name (case-insensitive) and click its associated "Complete" button.
-    """
-    try:
-        chrome_options = Options()
-        chrome_options.add_experimental_option("prefs", {
-            "credentials_enable_service": False,
-            "profile.password_manager_enabled": False
-        })
-        driver = webdriver.Chrome(options=chrome_options)
-        wait = WebDriverWait(driver, 15)  # Wait up to 15 seconds for elements
+        # 1) Log in
+        driver.get("http://localhost:3000")
+        wait.until(EC.presence_of_element_located((By.NAME, "email"))).send_keys(employee_email)
+        driver.find_element(By.NAME, "password").send_keys(employee_email.split('@')[0])
+        driver.find_element(By.XPATH, "//button[@type='submit']").click()
 
-        # --- Step 1: Log in ---
-        login_url = "http://localhost:3000"  # Adjust if needed
-        driver.get(login_url)
-
-        email_field = wait.until(EC.presence_of_element_located((By.NAME, "email")))
-        password_field = wait.until(EC.presence_of_element_located((By.NAME, "password")))
-        email_field.clear()
-        password_field.clear()
-        email_field.send_keys("employee1@gmail.com")
-        password_field.send_keys("employee1")
-
-        # Locate the login button (using its type attribute; adjust if necessary)
-        login_button = wait.until(EC.element_to_be_clickable((By.XPATH, "//button[@type='submit']")))
-        driver.execute_script("arguments[0].click();", login_button)
-
-        # --- Step 2: Navigate to "My Projects" then "My Milestones" ---
-        # Wait for the dashboard to load by waiting for the "My Projects" element.
-        wait.until(EC.presence_of_element_located((By.XPATH, "//*[contains(translate(text(),'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'my projects')]")))
-        my_projects_item = wait.until(EC.element_to_be_clickable((By.XPATH, "//*[contains(translate(text(),'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'my projects')]")))
-        driver.execute_script("arguments[0].click();", my_projects_item)
-        time.sleep(2)
-
-        my_milestones_item = wait.until(EC.element_to_be_clickable((By.XPATH, "//*[contains(translate(text(),'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'my milestones')]")))
-        driver.execute_script("arguments[0].click();", my_milestones_item)
-        time.sleep(6)
-
-        # --- Step 3: Locate the specific milestone and click "Complete" ---
-        # Adjust the XPath to search within <li> elements for the milestone text and then find the descendant button with class "complete-btn"
-        milestone_container = wait.until(EC.presence_of_element_located((
+        # 2) Click "My Milestones" in the sidebar
+        #    We look for the <span> with exactly that text
+        milestones_btn = wait.until(EC.element_to_be_clickable((
             By.XPATH,
-            f"//li[contains(translate(., 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), '{milestone_name.lower()}')]"
+            "//span[normalize-space(text())='My Milestones']"
         )))
-        complete_button = milestone_container.find_element(
-            By.XPATH, ".//button[contains(translate(., 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'complete')]"
+        driver.execute_script("arguments[0].click();", milestones_btn)
+        time.sleep(2)  # let the page render
+
+        # 3) Find the <li> containing our milestone_name and click its Complete button
+        items = driver.find_elements(By.XPATH, "//li")
+        target = None
+        for li in items:
+            if milestone_name.lower() in li.text.lower():
+                target = li
+                break
+
+        if not target:
+            print(f"[ERROR] Could not find milestone on page: {milestone_name}")
+            return
+
+        complete_btn = target.find_element(
+            By.XPATH,
+            ".//button[contains(translate(., 'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'), 'complete')]"
         )
-        driver.execute_script("arguments[0].click();", complete_button)
-        print(f"Marked milestone '{milestone_name}' as completed.")
-        time.sleep(2)
+        driver.execute_script("arguments[0].click();", complete_btn)
+        print(f"[DONE] '{milestone_name}' marked complete.")
+
     except Exception as e:
-        print(f"Error marking milestone '{milestone_name}' as complete: {e}")
+        print(f"[ERROR] Selenium error for '{milestone_name}': {e}")
     finally:
         driver.quit()
 
+
+
 def main():
-    """
-    Usage:
-       python ai_agent.py <file_path> <domain> <milestone_text>
-       
-    Example:
-       python ai_agent.py employee_form.html Database "define user schema"
-    """
-    if len(sys.argv) < 4:
-        print("Usage: python ai_agent.py <file_path> <domain> <milestone_text>")
+    if len(sys.argv) != 4:
+        print("Usage: python ai_agent.py <path_or_dir> <domain> <employee_email>")
         sys.exit(1)
 
-    file_path = sys.argv[1]
-    domain = sys.argv[2]
-    milestone_text = sys.argv[3]
+    path_or_dir, domain, employee_email = sys.argv[1], sys.argv[2], sys.argv[3]
 
-    print("Checking milestone completion status...")
-    if check_task_completion_with_gpt(file_path, domain, milestone_text):
-        print(f"AI says milestone '{milestone_text}' is completed! Proceeding to mark it in the dashboard.")
-        mark_specific_milestone_completed(milestone_text)
+    # Always scan the folder
+    if os.path.isdir(path_or_dir):
+        dir_to_scan = path_or_dir
+    elif os.path.isfile(path_or_dir):
+        dir_to_scan = os.path.dirname(path_or_dir) or '.'
     else:
-        print(f"AI says milestone '{milestone_text}' is NOT completed yet.")
+        print(f"[ERROR] '{path_or_dir}' is not a file or directory.")
+        sys.exit(1)
+
+    patterns = ["*.txt", "*.html", "*.js","*.css","*.py"]
+    last_three = get_last_n_files(dir_to_scan, patterns, n=3)
+    if not last_three:
+        print(f"[ERROR] No files matching {patterns} in {dir_to_scan}")
+        sys.exit(1)
+
+    print("Checking these files (newest first):")
+    for fp in last_three:
+        print(" -", fp)
+
+    # Extract raw milestone names
+    all_milestones = []
+    for fp in last_three:
+        try:
+            text = open(fp, 'r', encoding='utf-8', errors='ignore').read()
+        except Exception as e:
+            print(f"[ERROR] reading {fp}: {e}")
+            continue
+
+        for line in text.splitlines():
+            if "Milestone:" in line:
+                name = line.split("Milestone:",1)[1].strip()
+                if name:
+                    all_milestones.append(name)
+
+    if not all_milestones:
+        print("[INFO] No milestones found in files.")
+        sys.exit(0)
+
+    aggregated = "\n".join(all_milestones)
+    try:
+        raw = check_milestones_from_text(aggregated, domain, model="gpt-4")
+    except RateLimitError:
+        print("[WARN] GPT-4 limit hit, retrying with gpt-3.5-turbo")
+        raw = check_milestones_from_text(aggregated, domain, model="gpt-3.5-turbo")
+
+    try:
+        milestone_status = json.loads(raw)
+    except Exception as e:
+        print(f"[ERROR] Could not parse JSON from AI: {e}")
+        print("Raw AI response:", raw)
+        sys.exit(1)
+
+    not_done = []
+    for ms, stat in milestone_status.items():
+        if stat.strip().upper() == "YES":
+            print("AI -> YES:", ms)
+            mark_specific_milestone_completed(ms, employee_email)
+        else:
+            not_done.append(ms)
+
+    if not_done:
+        print("\nMilestones NOT completed:")
+        for m in not_done:
+            print(" -", m)
+    else:
+        print("\nAll detected milestones were marked completed.")
+
 
 if __name__ == "__main__":
     main()

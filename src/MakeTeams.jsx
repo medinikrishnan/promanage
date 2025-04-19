@@ -1,22 +1,35 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import { 
-  FaBars, FaHome, FaFireAlt, FaCommentAlt, FaClipboardList, 
-  FaSignOutAlt, FaStar, FaNewspaper, FaProjectDiagram, FaUserCog, 
-  FaUsers, FaChartBar, FaTasks, FaClock, FaLink 
+import {
+  FaBars,
+  FaHome,
+  FaFireAlt,
+  FaCommentAlt,
+  FaClipboardList,
+  FaSignOutAlt,
+  FaStar,
+  FaNewspaper,
+  FaProjectDiagram,
+  FaUserCog,
+  FaUsers,
+  FaChartBar,
+  FaTasks,
+  FaGamepad,
 } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import "./MakeTeams.css";
 import "./ProjectManagerDashboard.css"; // Base styles for sidebar, topbar, etc.
-import "./RatingPopup.css";   
-import "./UpdateFeed.css";  
+import "./RatingPopup.css";
+import "./UpdateFeed.css";
 
 const MakeTeams = () => {
+  // State variables for projects, tasks, feedback and loading states
   const [projects, setProjects] = useState([]);
   const [selectedProject, setSelectedProject] = useState(null);
   const [tasks, setTasks] = useState([]);
-  const [previewText, setPreviewText] = useState(""); // To hold preview JSON (editable)
-  const [feedbackText, setFeedbackText] = useState(""); // Chat/feedback input for refining preview
+  const [previewText, setPreviewText] = useState("");
+  const [editablePreview, setEditablePreview] = useState(null);
+  const [feedbackText, setFeedbackText] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [fetchingDetails, setFetchingDetails] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -29,7 +42,141 @@ const MakeTeams = () => {
   const [showRatingPopup, setShowRatingPopup] = useState(false);
   const [rating, setRating] = useState(0);
 
-  // Fetch projects on component mount
+  // New states for preview history navigation (limited to the last 3 previews)
+  const [previewHistory, setPreviewHistory] = useState([]);
+  const [currentPreviewIndex, setCurrentPreviewIndex] = useState(-1);
+
+  // New state to track if the tasks have been confirmed.
+  const [tasksConfirmed, setTasksConfirmed] = useState(false);
+
+  // ---------------------------
+  // Helper: Merge saved items from old preview into new preview based on index matching.
+  const mergeSavedItems = (oldPreview, newPreview) => {
+    if (!oldPreview || !newPreview) return newPreview;
+    if (oldPreview.tasks && newPreview.tasks) {
+      newPreview.tasks = newPreview.tasks.map((group, gIndex) => {
+        if (oldPreview.tasks[gIndex] && oldPreview.tasks[gIndex].saved) {
+          return { ...oldPreview.tasks[gIndex] };
+        }
+        if (group.tasks && oldPreview.tasks[gIndex] && oldPreview.tasks[gIndex].tasks) {
+          group.tasks = group.tasks.map((task, tIndex) => {
+            if (oldPreview.tasks[gIndex].tasks[tIndex] && oldPreview.tasks[gIndex].tasks[tIndex].saved) {
+              return { ...oldPreview.tasks[gIndex].tasks[tIndex] };
+            }
+            if (
+              task.subtasks &&
+              oldPreview.tasks[gIndex].tasks[tIndex] &&
+              oldPreview.tasks[gIndex].tasks[tIndex].subtasks
+            ) {
+              task.subtasks = task.subtasks.map((subtask, sIndex) => {
+                if (
+                  oldPreview.tasks[gIndex].tasks[tIndex].subtasks[sIndex] &&
+                  oldPreview.tasks[gIndex].tasks[tIndex].subtasks[sIndex].saved
+                ) {
+                  return { ...oldPreview.tasks[gIndex].tasks[tIndex].subtasks[sIndex] };
+                }
+                if (
+                  subtask.milestones &&
+                  oldPreview.tasks[gIndex].tasks[tIndex].subtasks[sIndex] &&
+                  oldPreview.tasks[gIndex].tasks[tIndex].subtasks[sIndex].milestones
+                ) {
+                  subtask.milestones = subtask.milestones.map((milestone, mIndex) => {
+                    if (
+                      oldPreview.tasks[gIndex].tasks[tIndex].subtasks[sIndex].milestones[mIndex] &&
+                      oldPreview.tasks[gIndex].tasks[tIndex].subtasks[sIndex].milestones[mIndex].saved
+                    ) {
+                      return { ...oldPreview.tasks[gIndex].tasks[tIndex].subtasks[sIndex].milestones[mIndex] };
+                    }
+                    return milestone;
+                  });
+                }
+                return subtask;
+              });
+            }
+            return task;
+          });
+        }
+        return group;
+      });
+    }
+    return newPreview;
+  };
+
+  // ---------------------------
+  // Toggle save functions (only work if tasks are not yet confirmed)
+  const toggleSaveGroup = (groupIndex) => {
+    if (tasksConfirmed) return;
+    const newPreview = { ...editablePreview };
+    newPreview.tasks = newPreview.tasks.map((group, i) => {
+      if (i === groupIndex) {
+        return { ...group, saved: !group.saved };
+      }
+      return group;
+    });
+    setEditablePreview(newPreview);
+  };
+
+  const toggleSaveTask = (groupIndex, taskIndex) => {
+    if (tasksConfirmed) return;
+    const newPreview = { ...editablePreview };
+    newPreview.tasks[groupIndex].tasks = newPreview.tasks[groupIndex].tasks.map((task, i) => {
+      if (i === taskIndex) {
+        return { ...task, saved: !task.saved };
+      }
+      return task;
+    });
+    setEditablePreview(newPreview);
+  };
+
+  const toggleSaveSubtask = (groupIndex, taskIndex, subIndex) => {
+    if (tasksConfirmed) return;
+    const newPreview = { ...editablePreview };
+    newPreview.tasks[groupIndex].tasks[taskIndex].subtasks = newPreview.tasks[groupIndex].tasks[taskIndex].subtasks.map(
+      (subtask, i) => {
+        if (i === subIndex) {
+          return { ...subtask, saved: !subtask.saved };
+        }
+        return subtask;
+      }
+    );
+    setEditablePreview(newPreview);
+  };
+
+  const toggleSaveMilestone = (groupIndex, taskIndex, subIndex, milestoneIndex) => {
+    if (tasksConfirmed) return;
+    const newPreview = { ...editablePreview };
+    newPreview.tasks[groupIndex].tasks[taskIndex].subtasks[subIndex].milestones =
+      newPreview.tasks[groupIndex].tasks[taskIndex].subtasks[subIndex].milestones.map((milestone, i) => {
+        if (i === milestoneIndex) {
+          return { ...milestone, saved: !milestone.saved };
+        }
+        return milestone;
+      });
+    setEditablePreview(newPreview);
+  };
+
+  // ---------------------------
+  // Preview history navigation handlers (limited to last 3 previews)
+  const handlePrevPreview = () => {
+    if (currentPreviewIndex > 0) {
+      const newIndex = currentPreviewIndex - 1;
+      setCurrentPreviewIndex(newIndex);
+      setEditablePreview(previewHistory[newIndex]);
+      setPreviewText(JSON.stringify(previewHistory[newIndex], null, 2));
+    }
+  };
+
+  const handleNextPreview = () => {
+    if (currentPreviewIndex < previewHistory.length - 1) {
+      const newIndex = currentPreviewIndex + 1;
+      setCurrentPreviewIndex(newIndex);
+      setEditablePreview(previewHistory[newIndex]);
+      setPreviewText(JSON.stringify(previewHistory[newIndex], null, 2));
+    }
+  };
+
+  // ---------------------------
+  // Fetch projects on mount
   useEffect(() => {
     const fetchProjects = async () => {
       try {
@@ -42,7 +189,7 @@ const MakeTeams = () => {
     fetchProjects();
   }, []);
 
-  // (Optional) fetch default project details (unchanged)
+  // Optional: fetch default project details
   useEffect(() => {
     fetch("http://localhost:5000/api/project_details/1")
       .then((response) => response.json())
@@ -53,34 +200,31 @@ const MakeTeams = () => {
       .catch((error) => console.error("Error fetching data:", error));
   }, []);
 
-  // Toggle Update Feed Popup (for updates)
+  // Toggle Update Feed Popup
   const handleToggleUpdateFeed = () => {
     setShowUpdateFeed((prev) => !prev);
   };
 
-  // Toggle Rating Popup for "Rate Us"
+  // Toggle Rating Popup
   const handleToggleRatingPopup = () => {
     setShowRatingPopup((prev) => !prev);
   };
 
-  // Logout handler: navigate to home page "/"
+  // Logout
   const handleLogout = () => {
     navigate("/");
   };
 
-  // Standard task-addition functions remain unchanged
-  const addTask = () => {
-    // This function may be used in other contexts
-    // Not used directly for previewing AI-generated tasks
-  };
-
+  // ---------------------------
+  // When a project is selected, generate a preview (only if tasks are not confirmed)
   const handleProjectSelect = async (project) => {
+    if (tasksConfirmed) {
+      alert("Tasks have already been confirmed. Cannot generate a new preview.");
+      return;
+    }
     setSelectedProject(project);
     setIsLoading(true);
-
     try {
-      // Instead of immediately generating tasks for DB, we call the preview endpoint.
-      console.log(`Generating preview for project ID: ${project.project_id}`);
       const response = await axios.get("http://localhost:5000/api/generate-tasks-preview", {
         params: {
           project_id: project.project_id,
@@ -88,19 +232,29 @@ const MakeTeams = () => {
         },
         headers: { "Content-Type": "application/json" }
       });
-      console.log("Preview Response:", response.data);
-      // Assume response.data is a valid JSON object for tasks preview.
-      setPreviewText(JSON.stringify(response.data, null, 2)); // Pretty-print for editing
+      const preview = response.data;
+      setPreviewText(JSON.stringify(preview, null, 2));
+      setEditablePreview(preview);
+      // Save preview to history (limit to last 3)
+      const newHistory = [preview].slice(-3);
+      setPreviewHistory(newHistory);
+      setCurrentPreviewIndex(newHistory.length - 1);
     } catch (error) {
       console.error("Error generating preview:", error);
       setPreviewText("Error generating preview.");
+      setEditablePreview(null);
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Handler to re-generate preview with updated feedback (chat-like)
+  // ---------------------------
+  // Regenerate preview with updated feedback (only if tasks not confirmed)
   const handleRegeneratePreview = async () => {
+    if (tasksConfirmed) {
+      alert("Tasks have already been confirmed. Cannot regenerate preview.");
+      return;
+    }
     if (!selectedProject) {
       alert("Please select a project first.");
       return;
@@ -114,44 +268,54 @@ const MakeTeams = () => {
         },
         headers: { "Content-Type": "application/json" }
       });
-      console.log("Re-generated Preview Response:", response.data);
-      setPreviewText(JSON.stringify(response.data, null, 2));
+      let newPreview = response.data;
+      if (editablePreview) {
+        newPreview = mergeSavedItems(editablePreview, newPreview);
+      }
+      let newHistory = previewHistory.slice(0, currentPreviewIndex + 1);
+      newHistory.push(newPreview);
+      newHistory = newHistory.slice(-3);
+      setPreviewHistory(newHistory);
+      setCurrentPreviewIndex(newHistory.length - 1);
+      setEditablePreview(newPreview);
+      setPreviewText(JSON.stringify(newPreview, null, 2));
     } catch (error) {
       console.error("Error regenerating preview:", error);
       setPreviewText("Error regenerating preview.");
+      setEditablePreview(null);
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Confirm tasks (commit to DB)
+  // ---------------------------
+  // Confirm tasks: send the updated preview to the backend.
+  // After confirmation, hide the preview division and disable further editing.
   const handleConfirmTasks = async () => {
-    if (!selectedProject || !previewText) {
+    if (!selectedProject || !editablePreview) {
       alert("No preview data available.");
       return;
     }
-    let tasksPreview;
     try {
-      tasksPreview = JSON.parse(previewText);
-    } catch (e) {
-      alert("Preview JSON is invalid. Please correct it before confirming.");
-      return;
-    }
-    try {
-      const response = await axios.post("http://localhost:5000/api/confirm-tasks", {
-        project_id: selectedProject.project_id,
-        tasks: tasksPreview,
-      }, { headers: { "Content-Type": "application/json" }});
+      const response = await axios.post(
+        "http://localhost:5000/api/confirm-tasks",
+        {
+          project_id: selectedProject.project_id,
+          tasks: editablePreview,
+        },
+        { headers: { "Content-Type": "application/json" } }
+      );
       console.log("Task Confirmation Response:", response.data);
       alert(response.data.message || "Tasks confirmed successfully!");
-      // Optionally, refresh tasks or project details here.
+      // Mark the tasks as confirmed so further editing or preview generation is disabled.
+      setTasksConfirmed(true);
     } catch (error) {
       console.error("Error confirming tasks:", error);
       alert("Error confirming tasks. Please try again.");
     }
   };
 
-  // (Unchanged) Handler to fetch project details by ID
+  // Fetch project details by ID
   const handleFetchProjectDetails = async () => {
     if (!projectId) {
       alert("Please enter a valid Project ID");
@@ -169,6 +333,43 @@ const MakeTeams = () => {
     } finally {
       setFetchingDetails(false);
     }
+  };
+
+  // Inline EditableField component for editing text.
+  // The edit button is hidden if tasks have been confirmed.
+  const EditableField = ({ text, onSave }) => {
+    const [isEditing, setIsEditing] = useState(false);
+    const [value, setValue] = useState(text);
+
+    useEffect(() => {
+      setValue(text);
+    }, [text]);
+
+    const handleSave = () => {
+      setIsEditing(false);
+      onSave(value);
+    };
+
+    return (
+      <span>
+        {isEditing ? (
+          <>
+            <input 
+              type="text"
+              value={value}
+              onChange={(e) => setValue(e.target.value)}
+            />
+            <button onClick={handleSave}>Save</button>
+            <button onClick={() => setIsEditing(false)}>Cancel</button>
+          </>
+        ) : (
+          <>
+            <span>{text}</span>{" "}
+            {!tasksConfirmed && <button onClick={() => setIsEditing(true)}>Edit</button>}
+          </>
+        )}
+      </span>
+    );
   };
 
   return (
@@ -206,17 +407,20 @@ const MakeTeams = () => {
           <div className="menu-item" onClick={() => navigate("/burnt-score")}>
             <FaFireAlt className="icon" /> {!isCollapsed && <span>Burnt Score</span>}
           </div>
+          <div className="menu-item" onClick={() => navigate("/gamify")}>
+          <FaGamepad className="icon" />{!isCollapsed && <span>Gamify</span>}
+          </div>
         </div>
       </div>
 
       {/* Main Content */}
       <div className={`main-content ${isCollapsed ? "collapsed" : ""}`}>
-        {/* Topbar with dynamic left margin and width */}
+        {/* Topbar */}
         <div
           className="topbar"
           style={{
             left: isCollapsed ? "80px" : "250px",
-            width: isCollapsed ? "calc(100% - 80px)" : "calc(100% - 250px)",
+            width: isCollapsed ? "calc(100% - 80px)" : "calc(100% - 250px)"
           }}
         >
           <h2 className="topbar-title"></h2>
@@ -241,7 +445,7 @@ const MakeTeams = () => {
         </div>
 
         <div className="content-container">
-          {/* -- Project List Section -- */}
+          {/* Projects List Section */}
           <div className="projects-list-container">
             <h2>Click to Generate Tasks Preview</h2>
             {projects.length === 0 ? (
@@ -251,7 +455,9 @@ const MakeTeams = () => {
                 {projects.map((project) => (
                   <li
                     key={project.project_id}
-                    className={`project-item-card ${selectedProject && selectedProject.project_id === project.project_id ? "selected" : ""}`}
+                    className={`project-item-card ${
+                      selectedProject && selectedProject.project_id === project.project_id ? "selected" : ""
+                    }`}
                     onClick={() => handleProjectSelect(project)}
                   >
                     <strong>{project.project_name}</strong> (ID: {project.project_id})
@@ -261,31 +467,161 @@ const MakeTeams = () => {
             )}
           </div>
 
-          {/* Preview & Chat Section */}
-          {selectedProject && (
+          {/* Preview & Chat Section: Hide if tasks have been confirmed */}
+          {!tasksConfirmed && selectedProject && (
             <div className="preview-chat-section">
               <h2>Tasks Preview for Project: {selectedProject.project_name}</h2>
               {isLoading && <p className="loading-message">Generating preview...</p>}
-              
+
               <div className="feedback-input">
-                <label htmlFor="feedback">Enter feedback to refine tasks (optional):</label>
+                <label htmlFor="feedback">
+                  Enter feedback to refine tasks (optional):
+                </label>
+                <br /><br />
                 <textarea
                   id="feedback"
                   placeholder="Your feedback..."
                   value={feedbackText}
                   onChange={(e) => setFeedbackText(e.target.value)}
                 />
-                <button onClick={handleRegeneratePreview}>Regenerate Preview</button>
+                <br /><br />
+                <div className="preview-controls">
+  <button className="btn-purple" onClick={handleRegeneratePreview}>
+    Regenerate Preview
+  </button>
+</div>
               </div>
 
-              <div className="preview-editor">
-                <label htmlFor="preview">Preview (editable):</label>
-                <textarea
-                  id="preview"
-                  value={previewText}
-                  onChange={(e) => setPreviewText(e.target.value)}
-                  rows={15}
-                />
+{/* History Navigation */}
+<div className="history-nav">
+  <button
+    className="btn-purple"
+    onClick={handlePrevPreview}
+    disabled={currentPreviewIndex <= 0}
+  >
+    Previous Preview
+  </button>
+  <span className="preview-info">
+    {previewHistory.length > 0
+      ? `Preview ${currentPreviewIndex + 1} of ${previewHistory.length}`
+      : ""}
+  </span>
+  <button
+    className="btn-purple"
+    onClick={handleNextPreview}
+    disabled={currentPreviewIndex >= previewHistory.length - 1}
+  >
+    Next Preview
+  </button>
+</div>
+
+              {/* Structured Display of Preview Data with Save & Edit Options */}
+              <div
+                className="structured-preview"
+                style={{
+                  marginTop: "1rem",
+                  backgroundColor: "#f7f7f7",
+                  padding: "1rem",
+                  borderRadius: "4px"
+                }}
+              >
+                <h4 style={{color:"black"}}>Structured Tasks Preview</h4>
+                {editablePreview &&
+                editablePreview.tasks &&
+                editablePreview.tasks.length > 0 ? (
+                  editablePreview.tasks.map((group, groupIndex) => (
+                    <div key={groupIndex} className="category-group" style={{ marginBottom: "1rem" , color:"black"}}>
+                      <h5 style={{ marginBottom: "0.5rem" }}>
+                        Category:{" "}
+                        <EditableField
+                          text={group.category}
+                          onSave={(newText) => {
+                            const newEditablePreview = { ...editablePreview };
+                            newEditablePreview.tasks[groupIndex].category = newText;
+                            setEditablePreview(newEditablePreview);
+                          }}
+                        />{" "}
+                        <button onClick={() => toggleSaveGroup(groupIndex)}>
+                          {group.saved ? "Unsave" : "Save"}
+                        </button>
+                      </h5>
+                      {group.tasks && group.tasks.length > 0 ? (
+                        group.tasks.map((task, taskIndex) => (
+                          <div key={taskIndex} className="task" style={{ marginBottom: "1rem", paddingLeft: "1rem" }}>
+                            <h6 style={{ marginBottom: "0.5rem" }}>
+                              Task:{" "}
+                              <EditableField
+                                text={task.task}
+                                onSave={(newText) => {
+                                  const newEditablePreview = { ...editablePreview };
+                                  newEditablePreview.tasks[groupIndex].tasks[taskIndex].task = newText;
+                                  setEditablePreview(newEditablePreview);
+                                }}
+                              />{" "}
+                              <button onClick={() => toggleSaveTask(groupIndex, taskIndex)}>
+                                {task.saved ? "Unsave" : "Save"}
+                              </button>
+                            </h6>
+                            {task.subtasks && task.subtasks.length > 0 ? (
+                              <ul className="subtasks" style={{ listStyleType: "none", paddingLeft: "1rem" }}>
+                                {task.subtasks.map((subtask, subIndex) => (
+                                  <li key={subIndex} className="subtask" style={{ marginBottom: "0.5rem" }}>
+                                    <p style={{ margin: "0.25rem 0" }}>
+                                      Subtask:{" "}
+                                      <EditableField
+                                        text={subtask.name}
+                                        onSave={(newText) => {
+                                          const newEditablePreview = { ...editablePreview };
+                                          newEditablePreview.tasks[groupIndex].tasks[taskIndex].subtasks[subIndex].name = newText;
+                                          setEditablePreview(newEditablePreview);
+                                        }}
+                                      />{" "}
+                                      <button onClick={() => toggleSaveSubtask(groupIndex, taskIndex, subIndex)}>
+                                        {subtask.saved ? "Unsave" : "Save"}
+                                      </button>
+                                    </p>
+                                    {subtask.milestones && subtask.milestones.length > 0 ? (
+                                      <ul className="milestones" style={{ listStyleType: "none", paddingLeft: "1rem" }}>
+                                        {subtask.milestones.map((milestone, mIndex) => (
+                                          <li key={mIndex} className="milestone" style={{ margin: "0.25rem 0" }}>
+                                            <p style={{ margin: 0 }}>
+                                              Milestone:{" "}
+                                              <EditableField
+                                                text={milestone.name}
+                                                onSave={(newText) => {
+                                                  const newEditablePreview = { ...editablePreview };
+                                                  newEditablePreview.tasks[groupIndex].tasks[taskIndex].subtasks[subIndex].milestones[mIndex].name = newText;
+                                                  setEditablePreview(newEditablePreview);
+                                                }}
+                                              />{" "}
+                                              <button onClick={() => toggleSaveMilestone(groupIndex, taskIndex, subIndex, mIndex)}>
+                                                {milestone.saved ? "Unsave" : "Save"}
+                                              </button>
+                                            </p>
+                                          </li>
+                                        ))}
+                                      </ul>
+                                    ) : (
+                                      <p style={{ margin: "0.25rem 0", color: "#888" }}>
+                                        No milestones for this subtask.
+                                      </p>
+                                    )}
+                                  </li>
+                                ))}
+                              </ul>
+                            ) : (
+                              <p style={{ color: "#888", paddingLeft: "1rem" }}>No subtasks for this task.</p>
+                            )}
+                          </div>
+                        ))
+                      ) : (
+                        <p style={{ color: "#888", paddingLeft: "1rem" }}>No tasks for this category.</p>
+                      )}
+                    </div>
+                  ))
+                ) : (
+                  <p>No tasks preview available.</p>
+                )}
               </div>
 
               <button onClick={handleConfirmTasks} className="confirm-btn">
@@ -294,7 +630,15 @@ const MakeTeams = () => {
             </div>
           )}
 
-          {/* -- Form to Fetch Project Details by ID (unchanged) -- */}
+          {/* Optionally show a confirmation message if tasks are confirmed */}
+          {tasksConfirmed && (
+            <div className="confirmation-message">
+              <h2>Tasks have been confirmed.</h2>
+              <p>You can no longer edit or regenerate tasks for this project.</p>
+            </div>
+          )}
+
+          {/* Form to Fetch Project Details by ID */}
           <div className="fetch-project-form">
             <h2>Fetch Project Details</h2>
             <input
@@ -308,7 +652,7 @@ const MakeTeams = () => {
             </button>
           </div>
 
-          {/* -- Display Project Details (Tasks, Subtasks, Milestones) -- */}
+          {/* Display Project Details (Tasks, Subtasks, Milestones) */}
           {projectDetails && projectDetails.tasks && (
             <div className="project-details">
               <h3>Project Tasks</h3>

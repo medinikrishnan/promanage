@@ -7,7 +7,7 @@ dotenv.config();
 import express, { json } from "express";
 import cors from "cors";
 import bcrypt from "bcryptjs";
-import { Sequelize, DataTypes } from "sequelize";
+import { Sequelize, DataTypes, Op } from "sequelize";
 
 
 // Setup Express Server
@@ -34,6 +34,42 @@ const Task = sequelize.define(
   },
   { tableName: "tasks", timestamps: true } // Ensuring table name is correct
 );
+
+const BadgeConfig = sequelize.define(
+  "BadgeConfig",
+  {
+    badge_id: {
+      type: DataTypes.INTEGER,
+      primaryKey: true,
+      allowNull: false,
+    },
+    category: {                // ← new column
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: "",
+    },
+    count: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0,
+    },
+    icon: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: "",
+    },
+    name: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: "",
+    },
+  },
+  {
+    tableName: "badge_config",
+    timestamps: false,
+  }
+);
+
 
 // Define SubTask Model (Foreign Key linking to Task)
 const SubTask = sequelize.define(
@@ -136,39 +172,59 @@ const ProjectManager = sequelize.define("ProjectManager", {
   timestamps: true, // Sequelize will automatically handle createdAt and updatedAt fields
 });
 
-const Project = sequelize.define("Project", {
+// Project model (required for foreign key references)
+const Project = sequelize.define(
+  "Project",
+  {
     project_id: {
-        type: DataTypes.INTEGER,
-        autoIncrement: true,
-        primaryKey: true
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
     },
     project_name: {
-        type: DataTypes.STRING,
-        allowNull: false
+      type: DataTypes.STRING,
+      allowNull: false,
     },
     project_description: {
-        type: DataTypes.TEXT,
-        allowNull: true
+      type: DataTypes.TEXT,
+      allowNull: true,
     },
     deadline: {
       type: DataTypes.DATE,
       allowNull: false,
-      defaultValue: Sequelize.literal('CURRENT_TIMESTAMP') // Default to current time
+      defaultValue: Sequelize.literal('CURRENT_TIMESTAMP'),
     },
-    createdAt: {
-        type: DataTypes.DATE,
-        allowNull: false,
-        defaultValue: DataTypes.NOW
+  },
+  {
+    tableName: "projects",
+    timestamps: true,
+  }
+);
+
+// ProjectAssignment model with foreign key on project_id referencing the Project model.
+const ProjectAssignment = sequelize.define(
+  "ProjectAssignment",
+  {
+    employee_id: {
+      type: DataTypes.INTEGER,
+      primaryKey: true,
+      references: {
+        model: EmployeeDetails,
+        key: "employee_id",
+      },
     },
-    updatedAt: {
-        type: DataTypes.DATE,
-        allowNull: false,
-        defaultValue: DataTypes.NOW
-    }
-}, {
-    tableName: "projects", // Table name in the database
-    timestamps: true // Automatically manages createdAt and updatedAt fields
-});
+    project_id: {
+      type: DataTypes.INTEGER,
+      primaryKey: true,
+      references: {
+        model: Project,
+        key: "project_id",
+      },
+    },
+  },
+  { tableName: "project_assignment", timestamps: false }
+);
+
 
 const Feedback = sequelize.define("Feedback", {
   id: {
@@ -247,13 +303,18 @@ Milestone.belongsTo(SubTask, { foreignKey: "subtask_id" });
 SubTask.belongsToMany(EmployeeDetails, { through: Assignment, foreignKey: "subtask_id" });
 EmployeeDetails.belongsToMany(SubTask, { through: Assignment, foreignKey: "employee_id" });
 
+// Define association: Assignment belongs to SubTask
+Assignment.belongsTo(SubTask, { foreignKey: 'subtask_id' });
+
+// Optionally, you can also define a reverse association if needed:
+SubTask.hasMany(Assignment, { foreignKey: 'subtask_id' });
+
 // Sync models with database
 sequelize.sync({ alter: true })
   .then(() => console.log("Database & tables synced successfully."))
   .catch((error) => console.error("Error syncing database:", error));
 
 export { sequelize, Task, SubTask, Milestone, Assignment, EmployeeDetails, Project };
-
 // API: Register Project Manager
 app.post("/register", async (req, res) => {
   try {
@@ -439,76 +500,78 @@ async function saveEmployeeAssignment(employee_id, project_id) {
     }
   });
   
-  app.post("/generate-tasks", async (req, res) => {
-    const { project_id } = req.body;
-    if (!project_id) {
-      return res.status(400).json({ error: "Project ID is required" });
+
+app.post("/generate-tasks", async (req, res) => {
+  const { project_id } = req.body;
+  if (!project_id) {
+    return res.status(400).json({ error: "Project ID is required" });
+  }
+
+  // Check if tasks already exist for the project.
+  try {
+    const [rows] = await db.query("SELECT * FROM tasks WHERE project_id = ?", [project_id]);
+    if (rows.length > 0) {
+      console.log("Tasks already exist for project:", project_id);
+      return res.json({
+        message: "Tasks already generated",
+        tasks: rows,
+      });
     }
-  
-    try {
-      // Check if tasks already exist for the project.
-      const [rows] = await db.query("SELECT * FROM tasks WHERE project_id = ?", [project_id]);
-  if (rows.length > 0) {
-    console.log("Tasks already exist for project:", project_id);
-    return res.json({
-      message: "Tasks already generated",
-      tasks: rows,
-    });
-}
-    } catch (error) {
-      console.error("Database error:", error);
-      return res.status(500).json({ error: "Error checking existing tasks" });
-    }
-  
-    // If no tasks exist, generate new tasks.
-    const generateTasks = spawn("python", ["task_generator.py", project_id]);
-    let output = "";
-    generateTasks.stdout.on("data", (data) => {
-      output += data.toString();
-    });
-    generateTasks.stderr.on("data", (data) => {
-      console.error("Python Error:", data.toString());
-    });
-  
-    generateTasks.on("close", async (code) => {
-      try {
-        const response = JSON.parse(output.trim());
-        if (response.error) {
-          return res.status(500).json({ error: response.error });
-        }
-  
-        // Once tasks are generated, assign them.
-        const assignTasks = spawn("python", ["task_assigner.py", project_id]);
-        let assignOutput = "";
-        assignTasks.stdout.on("data", (data) => {
-          assignOutput += data.toString();
-          console.log("Python Output (Assignment):", data.toString());
-        });
-        assignTasks.stderr.on("data", (data) => {
-          console.error("Python Error (Assignment):", data.toString());
-        });
-  
-        assignTasks.on("close", async (assignCode) => {
-          try {
-            const assignResponse = JSON.parse(assignOutput.trim());
-            if (assignResponse.error) {
-              return res.status(500).json({ error: assignResponse.error });
-            }
-            return res.json({
-              message: "Tasks generated and assigned successfully",
-              tasks: assignResponse.assignments,
-            });
-          } catch (error) {
-            return res.status(500).json({ error: "Failed to process task assignment" });
-          }
-        });
-      } catch (error) {
-        return res.status(500).json({ error: "Failed to process generated tasks" });
-      }
-    });
+  } catch (error) {
+    console.error("Database error:", error);
+    return res.status(500).json({ error: "Error checking existing tasks" });
+  }
+
+  // Spawn the task generator Python script.
+  const generateTasksProcess = spawn("python", ["task_generator.py", project_id]);
+  let tasksOutput = "";
+  generateTasksProcess.stdout.on("data", (data) => {
+    tasksOutput += data.toString();
   });
-  
-  
+  generateTasksProcess.stderr.on("data", (data) => {
+    console.error("Task Generator Python error:", data.toString());
+  });
+
+  generateTasksProcess.on("close", (code) => {
+    try {
+      const generateResult = JSON.parse(tasksOutput.trim());
+      if (generateResult.error) {
+        return res.status(500).json({ error: generateResult.error });
+      }
+      console.log("Task generation result:", generateResult);
+
+      // Now spawn the task assigner Python script.
+      const assignTasksProcess = spawn("python", ["task_assigner.py", project_id]);
+      let assignOutput = "";
+      assignTasksProcess.stdout.on("data", (data) => {
+        assignOutput += data.toString();
+        console.log("Task Assigner Python output:", data.toString());
+      });
+      assignTasksProcess.stderr.on("data", (data) => {
+        console.error("Task Assigner Python error:", data.toString());
+      });
+
+      assignTasksProcess.on("close", (assignCode) => {
+        try {
+          const assignResult = JSON.parse(assignOutput.trim());
+          if (assignResult.error) {
+            return res.status(500).json({ error: assignResult.error });
+          }
+          return res.json({
+            message: "Tasks generated and assigned successfully",
+            assignments: assignResult.assignments,
+          });
+        } catch (err) {
+          console.error("Error parsing task assignment result:", err);
+          return res.status(500).json({ error: "Failed to process task assignment" });
+        }
+      });
+    } catch (err) {
+      console.error("Error parsing generated tasks result:", err);
+      return res.status(500).json({ error: "Failed to process generated tasks" });
+    }
+  });
+});
 
 app.get('/api/project_details/:projectId', async (req, res) => {
   const { projectId } = req.params;
@@ -1638,6 +1701,7 @@ ${feedback ? "Manager Feedback: " + feedback : ""}
   }
 });
 
+
 app.post("/api/confirm-tasks", async (req, res) => {
   try {
     const { project_id, tasks: tasksPreview } = req.body;
@@ -1645,26 +1709,28 @@ app.post("/api/confirm-tasks", async (req, res) => {
       return res.status(400).json({ error: "project_id and tasks preview are required" });
     }
 
-    // Iterate over each task category in the preview
+    // Check if tasks have already been confirmed for this project.
+    const existingTask = await Task.findOne({ where: { project_id } });
+    if (existingTask) {
+      return res.status(400).json({ error: "Tasks have already been confirmed for this project." });
+    }
+
+    // Insert tasks, subtasks, and milestones from the preview into the database.
     for (const category of tasksPreview.tasks || []) {
       for (const taskData of category.tasks || []) {
-        // Create a Task record
         const taskRecord = await Task.create({
           name: taskData.task || "Unnamed Task",
           project_id,
           status: 0,
         });
 
-        // Process subtasks for this task
         if (Array.isArray(taskData.subtasks) && taskData.subtasks.length > 0) {
           for (const subtaskData of taskData.subtasks) {
-            // Here we must use the correct model name: "SubTask" (with a capital T)
             const subtaskRecord = await SubTask.create({
               name: subtaskData.name || "Unnamed Subtask",
               task_id: taskRecord.id,
             });
 
-            // Create milestones: expect exactly 5 milestones per subtask
             if (Array.isArray(subtaskData.milestones) && subtaskData.milestones.length === 5) {
               for (const milestoneData of subtaskData.milestones) {
                 await Milestone.create({
@@ -1700,13 +1766,208 @@ app.post("/api/confirm-tasks", async (req, res) => {
         }
       }
     }
+    
+    // Now call task_assigner.py to assign the tasks.
+    const assignTasks = spawn("python", ["task_assigner.py", project_id]);
 
-    return res.status(200).json({ message: "Tasks confirmed and saved successfully" });
+    let assignOutput = "";
+    assignTasks.stdout.on("data", (data) => {
+      assignOutput += data.toString();
+      console.log("Python Output (Assignment):", data.toString());
+    });
+    assignTasks.stderr.on("data", (data) => {
+      console.error("Python Error (Assignment):", data.toString());
+    });
+    assignTasks.on("close", async (assignCode) => {
+      try {
+        const assignResponse = JSON.parse(assignOutput.trim());
+        if (assignResponse.error) {
+          return res.status(500).json({ error: assignResponse.error });
+        }
+        return res.json({
+          message: "Tasks confirmed and assigned successfully",
+          assignments: assignResponse.assignments,
+        });
+      } catch (error) {
+        return res.status(500).json({ error: "Failed to process task assignment" });
+      }
+    });
   } catch (error) {
     console.error("Error in /api/confirm-tasks:", error);
     return res.status(500).json({ error: "Failed to confirm tasks" });
   }
 });
+
+
+
+// --- NEW: GET /api/employee-milestones ---
+// This endpoint returns milestones for the given employee with status = 0 (incomplete)
+app.get("/api/employee-milestones", async (req, res) => {
+  const { employee_id } = req.query;
+  if (!employee_id) {
+    return res.status(400).json({ error: "Employee ID is required." });
+  }
+  try {
+    // This query joins assignments, subtasks, and milestones so that we get only the milestones (with m.status=0)
+    const [milestoneRows] = await db.query(`
+      SELECT m.id AS milestone_id, m.name AS milestone_name, m.status,
+             st.id AS subtask_id, st.name AS subtask_name
+      FROM milestones m
+      JOIN subtasks st ON m.subtask_id = st.id
+      JOIN assignments a ON st.id = a.subtask_id
+      WHERE a.employee_id = ? AND m.status = 0
+    `, [employee_id]);
+
+    res.json({ milestones: milestoneRows });
+  } catch (error) {
+    console.error("Error fetching employee milestones:", error);
+    res.status(500).json({ error: "Failed to fetch employee milestones." });
+  }
+});
+
+import fs from "fs";
+
+app.post("/api/ai-check-all-new", async (req, res) => {
+  try {
+    // Now only employee_email is required from the frontend.
+    const { employee_email } = req.body;
+
+    // Validate required field
+    if (!employee_email) {
+      return res.status(400).json({ error: "employee_email is required." });
+    }
+
+    // Look up the employee by email
+    const employee = await EmployeeDetails.findOne({ where: { email: employee_email } });
+    if (!employee) {
+      return res.status(404).json({ error: "Employee not found" });
+    }
+    const employee_id = employee.employee_id;
+
+    // Fetch assignments (with related SubTask, Task, and Milestones)
+    const assignments = await Assignment.findAll({
+      where: { employee_id },
+      include: [
+        {
+          model: SubTask,
+          include: [
+            { model: Task },
+            { model: Milestone, as: "Milestones" }
+          ]
+        }
+      ]
+    });
+
+    if (!assignments || assignments.length === 0) {
+      return res.status(404).json({ error: "No tasks/milestones found for this employee." });
+    }
+
+    // Build aggregated text and collect task names
+    let aggregatedText = "";
+    const tasksSet = new Set(); // To compute the domain from task names
+
+    assignments.forEach((assignment) => {
+      const subtask = assignment.SubTask;
+      if (!subtask) return;
+
+      const task = subtask.Task;
+      if (task) {
+        tasksSet.add(task.name);
+      }
+
+      // Use the alias "Milestones" if it is defined in your association (adjust if needed)
+      const milestones = subtask.Milestones || [];
+      if (milestones.length === 0) {
+        aggregatedText += `Task: ${task ? task.name : "Unknown"} - Milestone: None\n`;
+      } else {
+        milestones.forEach((milestone) => {
+          aggregatedText += `Task: ${task ? task.name : "Unknown"} - Milestone: ${milestone.name}\n`;
+        });
+      }
+    });
+
+    if (!aggregatedText.trim()) {
+      return res.status(404).json({ error: "No milestones available to check for this employee." });
+    }
+
+    // Use the unique task names as the domain (or task name). If multiple tasks exist, they are joined with a comma.
+    const domain = [...tasksSet].join(", ");
+
+    // Define a temporary file path for the aggregated text
+    const tempFilePath = path.join(__dirname, "temp_aggregated.txt");
+
+    // Write the aggregated text to the file
+    fs.writeFileSync(tempFilePath, aggregatedText, { encoding: "utf-8" });
+    console.log("Aggregated milestones written to:", tempFilePath);
+
+    // Spawn the ai_agent.py process with both arguments (aggregated file and domain/task name)
+    console.log(`Spawning AI Agent with arguments: [${tempFilePath}, ${domain}]`);
+    const child = spawn("python", ["ai_agent.py", tempFilePath, domain, employee_email]);
+
+    let output = "";
+    child.stdout.on("data", (data) => {
+      output += data.toString();
+    });
+    child.stderr.on("data", (data) => {
+      console.error("AI Agent stderr:", data.toString());
+    });
+    child.on("close", (code) => {
+      console.log("AI Agent process exited with code", code);
+      return res.json({ message: "AI check completed", output });
+    });
+  } catch (error) {
+    console.error("Error in /api/ai-check-all-new:", error);
+    return res.status(500).json({ error: "Failed to run AI Agent" });
+  }
+});
+
+app.post("/api/save-badge-config", async (req, res) => {
+  const badgeConfigs = req.body.badgeConfigs;
+  const values = Object.entries(badgeConfigs).map(([id, cfg]) => [
+    parseInt(id),
+    cfg.category,
+    cfg.name,
+    cfg.icon,
+    parseInt(cfg.count),
+  ]);
+  const sql = `
+    INSERT INTO badge_config (badge_id, category, name, icon, \`count\`)
+    VALUES ?
+    ON DUPLICATE KEY UPDATE
+      category = VALUES(category),
+      name     = VALUES(name),
+      icon     = VALUES(icon),
+      \`count\` = VALUES(\`count\`)
+  `;
+  try {
+    await db.query(sql, [values]);
+    res.json({ message: "Badge configuration saved successfully" });
+  } catch (err) {
+    console.error("DB error saving badges:", err);
+    res.status(500).json({ error: "Failed to save badge configuration" });
+  }
+});
+
+app.get("/api/get-badge-config", async (req, res) => {
+  const sql = "SELECT badge_id, category, name, icon, `count` FROM badge_config";
+  try {
+    const [results] = await db.query(sql);  // promise style
+    const badgeConfigs = {};
+    results.forEach(row => {
+      badgeConfigs[row.badge_id] = {
+        category: row.category,
+        name:     row.name,
+        icon:     row.icon,
+        count:    row.count
+      };
+    });
+    res.json({ badgeConfigs });
+  } catch (err) {
+    console.error("DB error fetching badges:", err);
+    res.status(500).json({ error: "Failed to fetch badge configuration" });
+  }
+});
+
 
 
 // Start Server

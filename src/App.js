@@ -15,7 +15,7 @@ import MyFeedback from "./MyFeedback.jsx";
 import EmployeeRating from "./EmployeeRating.jsx";
 import BurntScorePage from "./BurntScorePage.jsx";
 import AddSkills from "./AddSkills.jsx";
-
+import Gamify from "./Gamify.jsx";
 function App() {
   return (
     <Router>
@@ -30,6 +30,7 @@ function App() {
         <Route path="/employee_dashboard" element={<EmployeeDashboard />} />
         <Route path="/mytasks" element={<MyTasks />} />
         <Route path="/home-employee" element={<EmployeeDashboard />} />
+        <Route path="/gamify" element={<Gamify/>} />
         
         {/* ✅ Allow Milestones.jsx to receive data via state */}
         <Route path="/milestones" element={<Milestones />} />

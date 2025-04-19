@@ -13,6 +13,7 @@ import {
   FaUsers,
   FaChartBar,
   FaTasks,
+  FaGamepad,
 } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
@@ -25,12 +26,13 @@ const AddProject = () => {
   const [projectId, setProjectId] = useState("");
   const [projectName, setProjectName] = useState("");
   const [projectDescription, setProjectDescription] = useState("");
+  const [deadline, setDeadline] = useState("");
   const [showSuccess, setShowSuccess] = useState(false);
   const [showUpdateFeed, setShowUpdateFeed] = useState(false);
   const [showRatingPopup, setShowRatingPopup] = useState(false);
   const [rating, setRating] = useState(0);
   const [projects, setProjects] = useState([]);
-  const [deadline, setDeadline] = useState("");
+  const [selectedProject, setSelectedProject] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const navigate = useNavigate();
 
@@ -124,6 +126,7 @@ const AddProject = () => {
     setIsSubmitting(false);
   };
 
+  // Fetch projects when the component mounts
   useEffect(() => {
     fetchProjects();
   }, []);
@@ -180,6 +183,9 @@ const AddProject = () => {
           </div>
           <div className="menu-item" onClick={() => navigate("/burnt-score")}>
             <FaFireAlt className="icon" /> {!isCollapsed && <span>Burnt Score</span>}
+          </div>
+          <div className="menu-item" onClick={() => navigate("/gamify")}>
+            <FaGamepad className="icon" />{!isCollapsed && <span>Gamify</span>}
           </div>
         </div>
       </div>
@@ -329,8 +335,27 @@ const AddProject = () => {
               {projects.length > 0 ? (
                 projects.map((project) => (
                   <li key={project.project_id}>
-                    <strong>ID:</strong> {project.project_id} -{" "}
-                    <strong>Name:</strong> {project.project_name}
+                    <div
+                      style={{ cursor: "pointer" }}
+                      onClick={() =>
+                        setSelectedProject(
+                          selectedProject &&
+                          selectedProject.project_id === project.project_id
+                            ? null
+                            : project
+                        )
+                      }
+                    >
+                      <strong>ID:</strong> {project.project_id} -{" "}
+                      <strong>Name:</strong> {project.project_name}
+                    </div>
+                    {selectedProject &&
+                      selectedProject.project_id === project.project_id && (
+                        <div className="project-description">
+                          <h4>Description for {project.project_name}</h4>
+                          <p>{project.project_description}</p>
+                        </div>
+                      )}
                   </li>
                 ))
               ) : (
