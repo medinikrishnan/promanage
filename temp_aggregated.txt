@@ -3,3 +3,8 @@ Task: Database Design - Milestone: Define Constraints
 Task: Database Design - Milestone: Implement Indexes
 Task: Database Design - Milestone: Optimize Performance
 Task: Database Design - Milestone: Test Database Integrity
+Task: Database Design - Milestone: Identify Entities and Relationships
+Task: Database Design - Milestone: Define Attributes for Entities
+Task: Database Design - Milestone: Establish Primary Keys
+Task: Database Design - Milestone: Set Relationships
+Task: Database Design - Milestone: Normalize Database Schema

@@ -13,6 +13,7 @@ import {
   FaUsers,
   FaChartBar,
   FaTasks,
+  FaBolt,
   FaGamepad,
 } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
@@ -186,6 +187,9 @@ const AddProject = () => {
           </div>
           <div className="menu-item" onClick={() => navigate("/gamify")}>
             <FaGamepad className="icon" />{!isCollapsed && <span>Gamify</span>}
+          </div>
+          <div className="menu-item" onClick={() =>navigate(`/urgency`)}>
+          <FaBolt className="icon" /> {!isCollapsed && <span>Change Managementt</span>}
           </div>
         </div>
       </div>

@@ -9,7 +9,8 @@ import {
   FaStar, 
   FaCommentAlt, 
   FaProjectDiagram,
-  FaCheck 
+  FaCheck,
+  FaFileWord
 } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import "./RatingPopup.css";
@@ -26,6 +27,28 @@ const EmployeeDashboard = () => {
   const [employeeBadge, setEmployeeBadge] = useState(null);
 
   const navigate = useNavigate();
+
+  const handleGenerateDocumentation = async () => {
+    try {
+      // Trigger the backend API to generate the documentation
+      const response = await fetch("http://localhost:5000/api/generate-doc", { method: "POST" });
+      if (response.ok) {
+        // The backend has successfully generated the doc
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = "DOCUMENTATION.docx"; // Default name of the generated doc
+        link.click();
+      } else {
+        alert("Error generating the documentation.");
+      }
+    } catch (error) {
+      console.error("❌ Error generating documentation:", error);
+      alert("Failed to generate documentation. Please try again.");
+    }
+  };  
+  
 
   // Fetch Kanban tasks from the API.
   const fetchTasks = async () => {
@@ -197,6 +220,10 @@ const EmployeeDashboard = () => {
           <div className="menu-item" onClick={() => navigate("/employee-rating")}>
             <FaStar className="icon" /> {!isCollapsed && <span>Employee Rating</span>}
           </div>
+          <div className="menu-item" onClick={handleGenerateDocumentation}>
+            <FaFileWord className="icon" /> {!isCollapsed && <span>Generate Documentation</span>}
+          </div>
+
         </div>
       </div>
 

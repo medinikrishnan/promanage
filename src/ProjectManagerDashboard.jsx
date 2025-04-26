@@ -4,6 +4,8 @@ import { DndProvider, useDrag, useDrop } from "react-dnd";
 import { HTML5Backend, getEmptyImage } from "react-dnd-html5-backend";
 import {
   FaBars,
+  FaBolt,
+  FaCogs,
   FaHome,
   FaClipboardList,
   FaProjectDiagram,
@@ -320,6 +322,16 @@ const ProjectManagerDashboard = () => {
           <div className="menu-item" onClick={() => navigate("/gamify")}>
           <FaGamepad className="icon" />{!isCollapsed && <span>Gamify</span>}
           </div>
+          <div className="menu-item" onClick={() => navigate("/resource")}>
+            <FaCogs className="icon" /> {!isCollapsed && <span>Resource Management</span>} {/* Added Resource Management Button */}
+          </div>
+          <div className="menu-item" onClick={() =>navigate(`/urgency`)}>
+          <FaBolt className="icon" /> {!isCollapsed && <span>Change Managementt</span>}
+          </div>
+          <div className="menu-item" onClick={() => navigate("/guide")}>
+          <FaBolt className="icon" /> {!isCollapsed && <span>Coalition</span>}
+        </div>
+
         </div>
       </div>
 

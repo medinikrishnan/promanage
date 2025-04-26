@@ -16,6 +16,10 @@ import EmployeeRating from "./EmployeeRating.jsx";
 import BurntScorePage from "./BurntScorePage.jsx";
 import AddSkills from "./AddSkills.jsx";
 import Gamify from "./Gamify.jsx";
+import ResourceManagement from "./Resource.jsx";
+import AddResource from "./Resource_add.jsx";
+import UrgencyPanel from "./UrgencyPanel.jsx";
+import GuidingCoalitionPanel from "./Guiding.jsx";
 function App() {
   return (
     <Router>
@@ -31,6 +35,9 @@ function App() {
         <Route path="/mytasks" element={<MyTasks />} />
         <Route path="/home-employee" element={<EmployeeDashboard />} />
         <Route path="/gamify" element={<Gamify/>} />
+        <Route path="/resource" element={<ResourceManagement/>} />
+        <Route path="/urgency" element={<UrgencyPanel />} />
+        <Route path="/guide" element={<GuidingCoalitionPanel />} />
         
         {/* ✅ Allow Milestones.jsx to receive data via state */}
         <Route path="/milestones" element={<Milestones />} />

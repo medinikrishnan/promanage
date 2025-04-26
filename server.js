@@ -8,7 +8,10 @@ import express, { json } from "express";
 import cors from "cors";
 import bcrypt from "bcryptjs";
 import { Sequelize, DataTypes, Op } from "sequelize";
-
+import OpenAI from "openai";
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY
+});
 
 // Setup Express Server
 const app = express();
@@ -293,6 +296,120 @@ const TeammateRating = sequelize.define("TeammateRating", {
 });
 
 
+// Define Resource Model
+const Resource = sequelize.define('Resource', {
+  resource_id: {
+    type: DataTypes.INTEGER,
+    primaryKey: true,
+    autoIncrement: true,
+  },
+  resource_name: {
+    type: DataTypes.STRING,
+    allowNull: false,
+  },
+  resource_type: {
+    type: DataTypes.STRING,
+    allowNull: false,
+  },
+  description: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+  },
+  quantity: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+  },
+  status: {
+    type: DataTypes.ENUM('Available', 'In Use', 'Maintenance'),
+    defaultValue: 'Available',
+  },
+}, {
+  tableName: 'resources',
+  timestamps: true,
+});
+
+// Project ↔ Resource assignment table
+const ProjectResource = sequelize.define("ProjectResource", {
+  project_resource_id: {
+    type: DataTypes.INTEGER,
+    primaryKey: true,
+    autoIncrement: true
+  },
+  project_id: {
+    type: DataTypes.INTEGER,
+    allowNull: false
+  },
+  resource_id: {
+    type: DataTypes.INTEGER,
+    allowNull: false
+  },
+  quantity_assigned: {
+    type: DataTypes.INTEGER,
+    allowNull: false
+  },
+  date_assigned: {
+    type: DataTypes.DATE,
+    defaultValue: DataTypes.NOW
+  }
+}, {
+  tableName: "project_resources",
+  timestamps: false
+});
+
+// Resource schedule/bookings table
+const ResourceSchedule = sequelize.define("ResourceSchedule", {
+  schedule_id: {
+    type: DataTypes.INTEGER,
+    primaryKey: true,
+    autoIncrement: true
+  },
+  resource_id:  { type: DataTypes.INTEGER, allowNull: false },
+  project_id:   { type: DataTypes.INTEGER, allowNull: false },
+  task_id:      { type: DataTypes.INTEGER, allowNull: false },
+  start_date:   { type: DataTypes.DATE,    allowNull: false },
+  end_date:     { type: DataTypes.DATE,    allowNull: false },
+  status:       {
+    type: DataTypes.ENUM("Scheduled","In Use","Completed","Cancelled"),
+    defaultValue: "Scheduled"
+  }
+}, {
+  tableName: "resource_schedule",
+  timestamps: false
+});
+
+// (Optional) If you have a task_requirements join table for each task’s needed resources
+const ResourceRequirement = sequelize.define("ResourceRequirement", {
+  requirement_id:  { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+  task_id:         { type: DataTypes.INTEGER, allowNull: false },
+  resource_id:     { type: DataTypes.INTEGER, allowNull: false },
+  quantity_needed: { type: DataTypes.INTEGER, allowNull: false }
+}, {
+  tableName: "task_requirements",
+  timestamps: false
+});
+
+// models/ChangeManagement.js
+export const ChangeManagement = sequelize.define(
+  "ChangeManagement",
+  {
+    id:         { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+    project_id: { type: DataTypes.INTEGER, allowNull: false },
+    step:       { type: DataTypes.TINYINT,  allowNull: false },  // 1-8
+    payload:    { type: DataTypes.JSON,     allowNull: true     }
+  },
+  { tableName: "change_management", timestamps: true }
+);
+
+
+ProjectResource.belongsTo(Resource, { foreignKey: "resource_id" });
+Resource.hasMany(ProjectResource, { foreignKey: "resource_id" });
+//
+// 3) Associations so that `include: [ Resource ]` works
+//
+ProjectResource.belongsTo(Resource,       { foreignKey: "resource_id" });
+ResourceSchedule.belongsTo(Resource,      { foreignKey: "resource_id" });
+ResourceRequirement.belongsTo(Resource,   { foreignKey: "resource_id" });
+
 // Define Relationships
 Task.hasMany(SubTask, { foreignKey: "task_id" });
 SubTask.belongsTo(Task, { foreignKey: "task_id" });
@@ -314,8 +431,9 @@ sequelize.sync({ alter: true })
   .then(() => console.log("Database & tables synced successfully."))
   .catch((error) => console.error("Error syncing database:", error));
 
-export { sequelize, Task, SubTask, Milestone, Assignment, EmployeeDetails, Project };
+export { sequelize, Task, SubTask, Milestone, Assignment, EmployeeDetails, Project, ProjectResource };
 // API: Register Project Manager
+
 app.post("/register", async (req, res) => {
   try {
     const { username, email, password, role } = req.body;
@@ -619,8 +737,6 @@ app.get('/api/project_details/:projectId', async (req, res) => {
     return res.status(500).json({ error: "Failed to fetch project details." });
   }
 });
-
-
 
 app.get("/api/projects", async (req, res) => {
   try {
@@ -1968,7 +2084,421 @@ app.get("/api/get-badge-config", async (req, res) => {
   }
 });
 
+import { exec } from 'child_process';
 
+// Endpoint to generate documentation
+app.post('/api/generate-doc', (req, res) => {
+  console.log("🔍 Generating documentation...");
+
+  // Path to your documentation generation script
+  const scriptPath = path.join(__dirname, 'documentation_agent.py');
+
+  exec(`python "${scriptPath}"`, (error, stdout, stderr) => {
+    if (error) {
+      console.error(`Error running documentation agent: ${stderr}`);
+      return res.status(500).send("Error generating documentation");
+    }
+
+    console.log(`Script output: ${stdout}`);
+
+    // Check if the file was generated
+    const docxPath = path.join(__dirname, 'DOCUMENTATION.docx');
+    if (fs.existsSync(docxPath)) {
+      // Send the DOCX file as a response
+      res.download(docxPath, 'DOCUMENTATION.docx', (err) => {
+        if (err) {
+          console.error('Error sending file:', err);
+          return res.status(500).send("Error downloading the documentation");
+        }
+      });
+    } else {
+      console.error("DOCX file not found.");
+      res.status(500).send("Error generating documentation");
+    }
+  });
+});
+
+app.get('/api/projects/:projectId/tasks', async (req, res) => {
+  try {
+    const tasks = await Task.findAll({
+      where: { project_id: req.params.projectId },
+      include: [{
+        model: SubTask,
+        foreignKey: 'task_id',
+        include: [{
+          model: Milestone,
+          foreignKey: 'subtask_id'
+        }]
+      }]
+    });
+
+    // Format the JSON nicely:
+    const payload = tasks.map(t => ({
+      task_id:   t.id,
+      name:      t.name,
+      status:    t.status,
+      subtasks:  t.SubTasks.map(st => ({
+        subtask_id: st.id,
+        name:       st.name,
+        status:     st.status,
+        milestones: st.Milestones.map(m => ({
+          milestone_id: m.id,
+          name:         m.name,
+          status:       m.status
+        }))
+      }))
+    }));
+
+    return res.json(payload);
+  } catch (err) {
+    console.error('Error fetching project tasks:', err);
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/projects/:projectId/resources', async (req, res) => {
+  try {
+    const assignments = await ProjectResource.findAll({
+      where: { project_id: req.params.projectId },
+      include: [{ model: Resource }]
+    });
+
+    console.log("✅ ProjectResource assignments fetched:", assignments);
+
+    const availability = await Promise.all(assignments.map(async (pr) => {
+      if (!pr.Resource) {
+        console.warn(`⚠️ Missing resource for resource_id ${pr.resource_id}`);
+        return null;
+      }
+
+      const inUse = await ResourceSchedule.count({
+        where: {
+          resource_id: pr.resource_id,
+          status: { [Op.in]: ['Scheduled', 'In Use'] }
+        }
+      });
+
+      return {
+        resource_id: pr.resource_id,
+        resource_name: pr.Resource.resource_name,
+        resource_type: pr.Resource.resource_type,
+        required_quantity: pr.quantity_assigned,
+        available_quantity:
+          pr.Resource.quantity - pr.quantity_assigned - inUse
+      };
+    }));
+
+    const filtered = availability.filter(item => item !== null);
+    res.json(filtered);
+  } catch (err) {
+    console.error('🔥 Error fetching project resources:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/projects/:projectId/schedule', async (req, res) => {
+  const { projectId } = req.params;
+  try {
+    const [rows] = await db.query(`
+      SELECT rs.resource_id, r.resource_name, rs.start_date, rs.end_date
+      FROM resource_schedule rs
+      JOIN resources r ON rs.resource_id = r.resource_id
+      WHERE rs.project_id = ?
+    `, [projectId]);
+    res.json(rows);
+  } catch (err) {
+    console.error("Error fetching schedule:", err);
+    res.status(500).json({ error: "Failed to fetch schedule." });
+  }
+});
+
+app.get('/api/projects/:projectId/resource-report', async (req, res) => {
+  const { projectId } = req.params;
+  try {
+    const [rows] = await db.query(`
+      SELECT 
+        r.resource_id,
+        r.resource_name,
+        COUNT(rs.schedule_id) AS scheduled_days,
+        0 AS actual_days,
+        10 - COUNT(rs.schedule_id) AS unscheduled_days,
+        ROUND((COUNT(rs.schedule_id) / 10) * 100, 1) AS utilization,
+        0 AS leave_days
+      FROM resources r
+      LEFT JOIN resource_schedule rs ON rs.resource_id = r.resource_id AND rs.project_id = ?
+      GROUP BY r.resource_id
+    `, [projectId]);
+
+    res.json(rows);
+  } catch (err) {
+    console.error("Error generating report:", err);
+    res.status(500).json({ error: "Failed to generate report." });
+  }
+});
+
+// GET all tasks (and their resource requirements) for a project
+app.get('/api/projects/:projectId/tasks', async (req, res) => {
+  const { projectId } = req.params;
+  try {
+    const tasks = await Task.findAll({
+      where: { project_id: projectId },
+      include: [{ model: ResourceRequirement, include: [Resource] }]
+    });
+    res.json(tasks);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to fetch project tasks' });
+  }
+});
+
+// POST ChatGPT resource suggestions for a project
+app.post('/api/projects/:projectId/suggest-resources', async (req, res) => {
+  const { projectId } = req.params;
+  const { description, tasks } = req.body;
+
+  try {
+    const openaiRes = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [
+        {
+          role: 'system',
+          content: `You are a resource planning assistant. Given a project description and list of tasks, return only a valid JSON array of resource suggestions in the format:
+
+[
+  {
+    "resource_name": "NVIDIA A100",
+    "resource_type": "GPU",
+    "description": "Tensor-core GPU for deep learning workloads",
+    "quantity": 2
+  },
+  ...
+]
+
+Do not include any other explanation or text.`
+        },
+        {
+          role: 'user',
+          content: JSON.stringify({ description, tasks }, null, 2)
+        }
+      ],
+      temperature: 0.4,
+      max_tokens: 500
+    });
+
+    const rawContent = openaiRes.choices[0].message.content.trim();
+
+    // Extract just the JSON part
+    const jsonStart = rawContent.indexOf('['); // Expecting an array
+    if (jsonStart === -1) {
+      throw new Error("No JSON array found in GPT response");
+    }
+
+    const jsonOnly = rawContent.slice(jsonStart);
+    const suggestions = JSON.parse(jsonOnly);
+
+    res.json({ suggestions });
+  } catch (err) {
+    console.error("🔥 Error parsing GPT response:", err.message);
+    res.status(500).json({
+      error: 'Failed to get resource suggestions',
+      details: err.message
+    });
+  }
+});
+
+// ✅ Route to Add a New Resource
+app.post("/api/resources", async (req, res) => {
+  try {
+    const { resource_name, resource_type, description, quantity } = req.body;
+
+    if (!resource_name || !resource_type || !quantity) {
+      return res.status(400).json({ error: "Missing required fields" });
+    }
+
+    await Resource.create({
+      resource_name,
+      resource_type,
+      description,
+      quantity,
+      status: "Available"
+    });
+
+    res.json({ message: "✅ Resource created successfully!" });
+  } catch (err) {
+    console.error("❌ Error creating resource:", err);
+    res.status(500).json({ error: "Failed to create resource" });
+  }
+});
+
+// server.js (or wherever you define your routes)
+
+app.get("/api/resources", async (req, res) => {
+  const { projectId } = req.query;
+
+  try {
+    // 1) Fetch all the physical resources
+    const [rows] = await db.query(`
+      SELECT
+        resource_id,
+        resource_name,
+        resource_type,
+        description,
+        quantity
+      FROM resources
+    `);
+
+    let allResources = rows;
+
+    // 2) If projectId is provided, also fetch employees assigned to that project
+    if (projectId) {
+      const [employees] = await db.query(`
+        SELECT
+          e.employee_id   AS resource_id,
+          e.email         AS resource_name,
+          'Person'        AS resource_type,
+          CONCAT(
+            'Domains: ', e.domains,
+            '; Skills: ', e.skills
+          )                AS description,
+          1               AS quantity
+        FROM employee_details e
+        JOIN project_assignment pa
+          ON e.employee_id = pa.employee_id
+        WHERE pa.project_id = ?
+      `, [projectId]);
+
+      // Append the “people” resources onto the catalog list
+      allResources = allResources.concat(employees);
+    }
+
+    res.json(allResources);
+  } catch (err) {
+    console.error("Error fetching resources:", err);
+    res.status(500).json({ error: "Failed to fetch resources." });
+  }
+});
+
+
+// POST /schedule-resource
+app.post('/api/schedule-resource', async (req, res) => {
+  const { project_id, resource_id, task_id, start_date, end_date } = req.body;
+  if (!project_id || !resource_id || !task_id || !start_date || !end_date) {
+    return res.status(400).json({ error: 'project_id, resource_id, task_id, start_date and end_date are all required.' });
+  }
+
+  try {
+    // status defaults to "Scheduled"
+    const sched = await ResourceSchedule.create({
+      project_id,
+      resource_id,
+      task_id,
+      start_date,
+      end_date,
+      status: 'Scheduled'
+    });
+    return res.status(201).json(sched);
+  } catch (err) {
+    console.error('Error scheduling resource:', err);
+    return res.status(500).json({ error: 'Failed to schedule resource.' });
+  }
+});
+
+app.post('/api/projects/:projectId/estimate-completion', async (req, res) => {
+  const { projectId } = req.params;
+  const { resources, tasks, people } = req.body;
+
+  // 1. Build a prompt for ChatGPT, now including people:
+  const prompt = `
+Project ${projectId} has these resources:
+${resources.map(r => `- ${r.name}: required ${r.required}, available ${r.available}`).join('\n')}
+
+Tasks to complete:
+${tasks.map(t => `- ${t}`).join('\n')}
+
+People assigned:
+${people.map(u => `- ${u.email} (domains: ${u.domains}; skills: ${u.skills})`).join('\n')}
+
+Based on this, estimate in natural language how many days the project will take if resources and team members are used optimally.
+`;
+
+  try {
+    const chat = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [
+        { role: 'system', content: 'You are an expert project planner.' },
+        { role: 'user',   content: prompt }
+      ],
+      temperature: 0.3
+    });
+    const estimate = chat.choices[0].message.content.trim();
+    res.json({ estimate });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ estimate: null, error: err.message });
+  }
+});
+
+// server.js (or wherever you define this route)
+app.post('/api/assign-resource', async (req, res) => {
+  const { project_id, resource_id, quantity_assigned, resource_type } = req.body;
+
+  if (!project_id || !resource_id || quantity_assigned == null || !resource_type) {
+    return res.status(400).json({
+      error: 'project_id, resource_id, quantity_assigned and resource_type are required.'
+    });
+  }
+
+  try {
+    if (resource_type === 'Person') {
+      // insert into the people‑assignment table instead of project_resources
+      await db.query(
+        `INSERT INTO project_assignment (employee_id, project_id)
+         VALUES (?, ?)`,
+        [resource_id, project_id]
+      );
+      return res.status(201).json({ assignedPerson: resource_id });
+    }
+
+    // otherwise treat it as a physical resource
+    const [result] = await db.query(
+      `INSERT INTO project_resources
+         (project_id, resource_id, quantity_assigned, date_assigned)
+       VALUES (?, ?, ?, NOW())`,
+      [project_id, resource_id, quantity_assigned]
+    );
+
+    return res.status(201).json({ insertId: result.insertId });
+  } catch (err) {
+    console.error('🔥  Error in /api/assign-resource:', err);
+    return res.status(500).json({ error: 'Failed to assign resource: ' + err.message });
+  }
+});
+
+app.get('/api/urgency/:projectId', async (req, res) => {
+  try {
+    const row = await ChangeManagement.findOne({
+      where: { project_id: req.params.projectId, step: 1 }
+    });
+    res.json(row?.payload || {});          // default empty object
+  } catch (err) {
+    console.error(err); res.status(500).json({ error: 'DB error' });
+  }
+});
+
+// POST /api/urgency/:projectId
+app.post('/api/urgency/:projectId', async (req, res) => {
+  const payload = req.body;               // {kpi_gap, comp_threat, story, ...}
+  try {
+    await ChangeManagement.upsert({
+      project_id: req.params.projectId,
+      step: 1,
+      payload
+    });
+    res.json({ message: 'Urgency saved' });
+  } catch (err) {
+    console.error(err); res.status(500).json({ error: 'DB error' });
+  }
+});
 
 // Start Server
 const PORT = process.env.PORT || 5000;
