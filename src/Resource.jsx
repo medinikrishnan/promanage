@@ -3,20 +3,22 @@
 import React, { useState, useEffect } from 'react';
 import {
   FaBars,
+  FaBolt,
+  FaCogs,
   FaHome,
-  FaFireAlt,
-  FaCommentAlt,
   FaClipboardList,
-  FaSignOutAlt,
-  FaStar,
-  FaNewspaper,
   FaProjectDiagram,
   FaUserCog,
   FaUsers,
   FaChartBar,
   FaTasks,
+  FaCommentAlt,
+  FaFireAlt,
+  FaNewspaper,
+  FaStar,
+  FaSignOutAlt,
   FaGamepad,
-} from 'react-icons/fa';
+} from "react-icons/fa";
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
@@ -24,7 +26,6 @@ import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 
 import ScheduleCalendar from './Resource_schedule.jsx';
-import ResourceReport   from './Resource_report.jsx';
 
 import './ProjectManagerDashboard.css';
 import './RatingPopup.css';
@@ -119,38 +120,36 @@ const ResourceManagement = () => {
     if (!assignQty.resourceId || !assignQty.qty) {
       return alert('Select a resource and qty');
     }
+  
+    const selectedResource = allResources.find(
+      r => r.resource_id == assignQty.resourceId
+    );
+    if (!selectedResource) {
+      return alert('Resource not found.');
+    }
+  
     try {
       await axios.post('/assign-resource', {
         project_id: selectedProject,
         resource_id: assignQty.resourceId,
-        quantity_assigned: +assignQty.qty
+        quantity_assigned: +assignQty.qty,
+        resource_type: selectedResource.resource_type
       });
       setAssignQty({ resourceId:'', qty:'' });
-      // reload assigned resources
       const { data } = await axios.get(`/projects/${selectedProject}/resources`);
       setResources(data);
     } catch (err) {
       console.error(err);
-      alert('Assign failed.');
+      if (err.response && err.response.status === 409) {
+        alert('Person is already assigned to this project.');
+      } else {
+        alert('Assign failed.');
+      }
     }
   };
+  
 
-  // assign a person
-  const handleAssignPerson = async () => {
-    if (!assignPerson) return alert('Select a person');
-    try {
-      await axios.post('/assign-employees', {
-        assignments: [{ employee_id:+assignPerson, project_id:selectedProject }]
-      });
-      setAssignPerson('');
-      // reload people
-      const { data } = await axios.get(`/project-employees/${selectedProject}`);
-      setPeople(data.employees);
-    } catch (err) {
-      console.error(err);
-      alert('Person assign failed.');
-    }
-  };
+  
 
   // schedule a resource on a task
   const handleSchedule = async () => {
@@ -262,9 +261,6 @@ const ResourceManagement = () => {
                 <div className="menu-item" onClick={() => navigate("/progress")}>
                   <FaChartBar className="icon" /> {!isCollapsed && <span>Progress</span>}
                 </div>
-                <div className="menu-item" onClick={() => navigate("/taskcard")}>
-                  <FaTasks className="icon" /> {!isCollapsed && <span>Task Card</span>}
-                </div>
                 <div className="menu-item" onClick={() => navigate("/myteams")}>
                   <FaUsers className="icon" /> {!isCollapsed && <span>Make Teams</span>}
                 </div>
@@ -272,11 +268,20 @@ const ResourceManagement = () => {
                   <FaCommentAlt className="icon" /> {!isCollapsed && <span>Feed Back Deck</span>}
                 </div>
                 <div className="menu-item" onClick={() => navigate("/burnt-score")}>
-                  <FaFireAlt className="icon" /> {!isCollapsed && <span>Burnt Score</span>}
+                  <FaFireAlt className="icon" /> {!isCollapsed && <span>Team Health</span>}
                 </div>
                 <div className="menu-item" onClick={() => navigate("/gamify")}>
                   <FaGamepad className="icon" />{!isCollapsed && <span>Gamify</span>}
                 </div>
+          <div className="menu-item" onClick={() => navigate("/resource")}>
+            <FaCogs className="icon" /> {!isCollapsed && <span>Resource Management</span>} {/* Added Resource Management Button */}
+          </div>
+          <div className="menu-item" onClick={() =>navigate(`/urgency`)}>
+          <FaBolt className="icon" /> {!isCollapsed && <span>Change Managementt</span>}
+          </div>
+          <div className="menu-item" onClick={() => navigate("/guide")}>
+          <FaBolt className="icon" /> {!isCollapsed && <span>Coalition</span>}
+        </div>
               </div>
       </div>
 
@@ -290,7 +295,7 @@ const ResourceManagement = () => {
             width: isCollapsed?'calc(100% - 80px)':'calc(100% - 250px)'
           }}
         >
-          <h2 className="topbar-title">Resource Management</h2>
+          <h2 className="topbar-title"></h2>
           <div className="topbar-icons">
             <FaNewspaper className="update-icon" onClick={handleToggleUpdateFeed} title="Feed"/>
             <FaStar      className="rating-icon" onClick={handleToggleRatingPopup} title="Rate"/>
@@ -330,9 +335,9 @@ const ResourceManagement = () => {
         )}
 
         {/* Resource UI */}
-        <div className="resource-content" style={{padding:20}}>
+        <div className="resource-content" style={{padding: 20, display: 'flex', flexDirection: 'column', alignItems: 'stretch'}}>
           {/* Project Selector */}
-          <section className="project-list">
+          <section className="project-list" style={{ width: "600px" }}>
             <h3>Select Project</h3>
             <ul>
               {projects.map(p=>(
@@ -346,11 +351,41 @@ const ResourceManagement = () => {
               ))}
             </ul>
           </section>
+          {/* Add New Resource */}
+          <section className="form-row">
+                <h4>Add New Resource</h4>
+                <input
+                  style={{ width: "200px" }}
+                  placeholder="Name"
+                  value={newResource.resource_name}
+                  onChange={e=>setNewResource({...newResource,resource_name:e.target.value})}
+                />
+                <input
+                  style={{ width: "200px" }}
+                  placeholder="Type"
+                  value={newResource.resource_type}
+                  onChange={e=>setNewResource({...newResource,resource_type:e.target.value})}
+                />
+                <input
+                  style={{ width: "200px" }}
+                  placeholder="Desc"
+                  value={newResource.description}
+                  onChange={e=>setNewResource({...newResource,description:e.target.value})}
+                />
+                <input
+                  style={{ width: "200px" }}
+                  type="number"
+                  placeholder="Qty"
+                  value={newResource.quantity}
+                  onChange={e=>setNewResource({...newResource,quantity:e.target.value})}
+                />
+                <button onClick={handleAddResource}>Add</button>
+              </section>
 
           {selectedProject && (
             <>
               {/* Physical Resources */}
-              <section className="resource-table">
+              <section className="resource-table" style={{ width: "400px" }}>
                 <h3>
                   Resources for “
                   {projects.find(p=>p.project_id===selectedProject)?.project_name}
@@ -378,74 +413,29 @@ const ResourceManagement = () => {
                 </table>
               </section>
 
-              {/* Assigned People */}
-              <section className="resource-table">
-                <h3>People Assigned</h3>
-                <table>
-                  <thead>
-                    <tr><th>Email</th><th>Domains</th><th>Skills</th></tr>
-                  </thead>
-                  <tbody>
-                    {people.length > 0 ? people.map(p=>(
-                      <tr key={p.employee_id}>
-                        <td>{p.email}</td>
-                        <td>{p.domains}</td>
-                        <td>{p.skills}</td>
-                      </tr>
-                    )) : (
-                      <tr>
-                        <td colSpan={3} style={{textAlign:'center'}}>No one assigned</td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </section>
-
-              {/* Assign Physical */}
+              {/* Assign Resource (Equipment + People) */}
               <section className="form-row">
                 <h4>Assign Resource</h4>
                 <select
                   value={assignQty.resourceId}
-                  onChange={e=>setAssignQty({...assignQty,resourceId:e.target.value})}
+                  onChange={e => setAssignQty({ ...assignQty, resourceId: e.target.value })}
                 >
-                  <option value="">-- Resource --</option>
-                  {allResources
-                    .filter(r=>r.resource_type!=='Person')
-                    .map(r=>(
-                      <option key={r.resource_id} value={r.resource_id}>
-                        {r.resource_name}
-                      </option>
-                    ))}
+                  <option value="">-- Select Resource --</option>
+                  {allResources.map(r => (
+                    <option key={r.resource_id} value={r.resource_id}>
+                      {r.resource_name} ({r.resource_type})
+                    </option>
+                  ))}
                 </select>
                 <input
                   type="number"
                   placeholder="Qty"
                   value={assignQty.qty}
-                  onChange={e=>setAssignQty({...assignQty,qty:e.target.value})}
+                  onChange={e => setAssignQty({ ...assignQty, qty: e.target.value })}
                 />
                 <button onClick={handleAssignResource}>Assign</button>
               </section>
 
-              {/* Assign Person */}
-              <section className="form-row">
-                <h4>Assign Person</h4>
-                <select
-                  value={assignPerson}
-                  onChange={e=>setAssignPerson(e.target.value)}
-                >
-                  <option value="">-- Person --</option>
-                  {allResources
-                    .filter(r=>r.resource_type==='Person')
-                    .map(r=>(
-                      <option key={r.resource_id} value={r.resource_id}>
-                        {r.resource_name}
-                      </option>
-                    ))}
-                </select>
-                <button onClick={handleAssignPerson}>
-                  Assign
-                </button>
-              </section>
 
               {/* Schedule */}
               <section className="form-row">
@@ -472,100 +462,100 @@ const ResourceManagement = () => {
                     </option>
                   ))}
                 </select>
-                <DatePicker
-                  selected={scheduleData.start}
-                  onChange={d=>setScheduleData({...scheduleData,start:d})}
-                  showTimeSelect timeIntervals={30} dateFormat="Pp"
-                />
-                <DatePicker
-                  selected={scheduleData.end}
-                  onChange={d=>setScheduleData({...scheduleData,end:d})}
-                  showTimeSelect timeIntervals={30} dateFormat="Pp"
-                />
+                
                 <button onClick={handleSchedule}>Schedule</button>
               </section>
 
               {/* Visualizations */}
               <ScheduleCalendar projectId={selectedProject}/>
-              <ResourceReport   projectId={selectedProject}/>
+              
+              
 
-              {/* Add New Resource */}
-              <section className="form-row">
-                <h4>Add New Resource</h4>
-                <input
-                  placeholder="Name"
-                  value={newResource.resource_name}
-                  onChange={e=>setNewResource({...newResource,resource_name:e.target.value})}
-                />
-                <input
-                  placeholder="Type"
-                  value={newResource.resource_type}
-                  onChange={e=>setNewResource({...newResource,resource_type:e.target.value})}
-                />
-                <input
-                  placeholder="Desc"
-                  value={newResource.description}
-                  onChange={e=>setNewResource({...newResource,description:e.target.value})}
-                />
-                <input
-                  type="number"
-                  placeholder="Qty"
-                  value={newResource.quantity}
-                  onChange={e=>setNewResource({...newResource,quantity:e.target.value})}
-                />
-                <button onClick={handleAddResource}>Add</button>
-              </section>
+              {/* AI Suggestions and Completion Estimate */}
+              <div style={{ marginTop: 20, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '20px' }}>
 
-              {/* AI Suggestions */}
-              <section style={{marginTop:20}}>
-                <h4>AI Suggestions</h4>
-                <button onClick={handleSuggest}>Suggest Resources</button>
-                <ul>
-                  {suggestions.map((s,i)=>(
-                    <li key={i}>{s.resource_name} — {s.quantity}</li>
-                  ))}
-                </ul>
-              </section>
+              {/* Suggest Resources Button */}
+              <button
+                onClick={handleSuggest}
+                style={{
+                  padding: '0.5rem 1rem',
+                  background: 'linear-gradient(to right, #6c2ca7, #8a4fff)',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: 4,
+                  cursor: 'pointer'
+                }}
+              >
+                Suggest Resources
+              </button>
 
-              {/* Completion Estimate */}
-              <section style={{marginTop:20}}>
-                <h4>Completion Estimate</h4>
+              {/* Show Suggested Resources */}
+              <ul style={{ marginTop: '10px', listStyle: 'none', padding: 0 }}>
+                {suggestions.map((s, i) => (
+                  <li key={i} style={{ color: '#ccc' }}>
+                    {s.resource_name} — {s.quantity}
+                  </li>
+                ))}
+              </ul>
+
+              {/* Estimate Completion Section */}
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '15px', width: '100%' }}>
                 <button
                   onClick={handleEstimate}
                   disabled={isEstimating}
                   style={{
-                    padding:'0.5rem 1rem',
-                    background: isEstimating?'#ccc':'linear-gradient(to right,#6c2ca7,#8a4fff)',
-                    color:'#fff',
-                    border:'none',
-                    borderRadius:4,
-                    cursor:isEstimating?'not-allowed':'pointer'
+                    padding: '0.5rem 1rem',
+                    background: isEstimating ? '#ccc' : 'linear-gradient(to right, #6c2ca7, #8a4fff)',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: 4,
+                    cursor: isEstimating ? 'not-allowed' : 'pointer'
                   }}
                 >
-                  {isEstimating?'Estimating…':'Estimate Completion'}
+                  {isEstimating ? 'Estimating…' : 'Estimate Completion'}
                 </button>
+
                 {estimate && (
                   <div style={{
-                    marginTop:'1rem',
-                    padding:'1rem',
-                    background:'#2e2e42',
-                    borderRadius:6,
-                    color:'#ece7f2',
-                    lineHeight:'1.5'
+                    marginTop: '1rem',
+                    padding: '1rem',
+                    background: '#2e2e42',
+                    borderRadius: 6,
+                    color: '#ece7f2',
+                    width: '80%',
+                    textAlign: 'left',
+                    lineHeight: '1.5'
                   }}>
-                    {estimate.split('\n').map((line,i)=>(
-                      <p key={i} style={{margin:'0.25rem 0'}}>
-                        {/^(\d+\.)/.test(line) ? (
-                          <>
-                            <strong>{line.match(/^(\d+\.)/)[1]}</strong>{' '}
-                            {line.replace(/^(\d+\.\s*)/,'')}
-                          </>
-                        ) : line}
-                      </p>
-                    ))}
-                  </div>
-                )}
-              </section>
+                    {estimate.split('\n').map((line, i) => {
+                      const trimmed = line.trim();
+                      if (trimmed.endsWith(':')) {
+                        return (
+                          <h4 key={i} style={{ marginTop: '1rem', color: '#c084fc' }}>
+                            {trimmed}
+                          </h4>
+                        );
+                      } else if (/^(\d+\.)/.test(trimmed)) {
+                        return (
+                          <p key={i} style={{ margin: '0.25rem 0' }}>
+                            <strong>{trimmed.match(/^(\d+\.)/)[1]}</strong>{' '}
+                            {trimmed.replace(/^(\d+\.\s*)/, '')}
+                          </p>
+                        );
+                      } else {
+                        return (
+                          <p key={i} style={{ margin: '0.25rem 0' }}>
+                            {trimmed}
+                          </p>
+                        );
+                      }
+                    })}
+
+    </div>
+  )}
+</div>
+
+</div>
+
             </>
           )}
         </div>

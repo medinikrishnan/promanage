@@ -220,8 +220,8 @@ const EmployeeDashboard = () => {
           <div className="menu-item" onClick={() => navigate("/employee-rating")}>
             <FaStar className="icon" /> {!isCollapsed && <span>Employee Rating</span>}
           </div>
-          <div className="menu-item" onClick={handleGenerateDocumentation}>
-            <FaFileWord className="icon" /> {!isCollapsed && <span>Generate Documentation</span>}
+          <div className="menu-item" onClick={() => navigate("/employee-urgency")}>
+            <FaFileWord className="icon" /> {!isCollapsed && <span>Change Management</span>}
           </div>
 
         </div>

@@ -387,17 +387,31 @@ const ResourceRequirement = sequelize.define("ResourceRequirement", {
   tableName: "task_requirements",
   timestamps: false
 });
-
-// models/ChangeManagement.js
 export const ChangeManagement = sequelize.define(
   "ChangeManagement",
   {
-    id:         { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
-    project_id: { type: DataTypes.INTEGER, allowNull: false },
-    step:       { type: DataTypes.TINYINT,  allowNull: false },  // 1-8
-    payload:    { type: DataTypes.JSON,     allowNull: true     }
+    id: {
+      type: DataTypes.INTEGER,
+      primaryKey: true,
+      autoIncrement: true
+    },
+    kpi_gap: {
+      type: DataTypes.STRING(255),
+      allowNull: false
+    },
+    external_threat: {
+      type: DataTypes.STRING(255),
+      allowNull: false
+    },
+    narrative: {
+      type: DataTypes.TEXT,
+      allowNull: false
+    }
   },
-  { tableName: "change_management", timestamps: true }
+  {
+    tableName: "change_management",
+    timestamps: false  // 👈 disable createdAt and updatedAt
+  }
 );
 
 
@@ -1541,12 +1555,11 @@ app.get("/api/project-burnt-scores", async (req, res) => {
     `, [projectId]);
 
     if (!employeeRows.length) {
-      return res.json({ teamScores: [], teamAverage: 0 });
+      return res.json({ teamScores: [], teamAverage: 0, teamBurntInsight: {} });
     }
 
     const teamScores = [];
 
-    // Weights for each drive
     const wComprehend = 0.25;
     const wAcquire    = 0.25;
     const wBond       = 0.25;
@@ -1556,93 +1569,69 @@ app.get("/api/project-burnt-scores", async (req, res) => {
       const employeeId   = emp.employee_id;
       const employeeEmail= emp.email;
 
-      // -----------------------------------
-      // 1) Comprehend Drive (# completed tasks / total tasks) * 100
+      // 1) Comprehend Drive
       let comprehendScore = 0;
       {
-        // total assigned tasks (or milestones) for this employee in the project
         const [totalRows] = await db.query(`
           SELECT COUNT(*) AS total
           FROM assignments a
           JOIN subtasks st ON a.subtask_id = st.id
           JOIN tasks t ON st.task_id = t.id
-          WHERE a.employee_id = ?
-            AND t.project_id = ?
+          WHERE a.employee_id = ? AND t.project_id = ?
         `, [employeeId, projectId]);
 
-        // completed tasks
         const [completedRows] = await db.query(`
           SELECT COUNT(*) AS completed
           FROM assignments a
           JOIN subtasks st ON a.subtask_id = st.id
           JOIN tasks t ON st.task_id = t.id
-          WHERE a.employee_id = ?
-            AND t.project_id = ?
-            AND a.status = 1  -- or whatever indicates "completed"
+          WHERE a.employee_id = ? AND t.project_id = ? AND a.status = 1
         `, [employeeId, projectId]);
 
-        const total     = totalRows[0].total     || 0;
+        const total = totalRows[0].total || 0;
         const completed = completedRows[0].completed || 0;
-
-        if (total > 0) {
-          comprehendScore = (completed / total) * 100;
-        } else {
-          comprehendScore = 0; // or 100 if no tasks assigned
-        }
+        comprehendScore = total > 0 ? (completed / total) * 100 : 0;
       }
 
-      // -----------------------------------
-      // 2) Acquire Drive: count # of feedback entries => scale 0..100
+      // 2) Acquire Drive
       let acquireScore = 0;
       {
-        // e.g. simply count how many feedback rows exist for that employee in this project
         const [feedbackRows] = await db.query(`
           SELECT COUNT(*) AS feedCount
           FROM feedback
-          WHERE employee_id = ?
-            AND project_id = ?
+          WHERE employee_id = ? AND project_id = ?
         `, [employeeId, projectId]);
 
         const feedCount = feedbackRows[0].feedCount || 0;
-        // Suppose each feedback entry is worth 10 points, capping at 100
         acquireScore = Math.min(feedCount * 10, 100);
       }
 
-      // -----------------------------------
-      // 3) Bond Drive: average rating from teammate_rating for "rated_employee_email"
+      // 3) Bond Drive
       let bondScore = 0;
       {
         const [bondRows] = await db.query(`
           SELECT AVG(rating) AS avgRating
           FROM teammate_rating
-          WHERE rated_employee_email = ?
-            AND project_id = ?
+          WHERE rated_employee_email = ? AND project_id = ?
         `, [employeeEmail, projectId]);
 
         const avgRating = bondRows[0].avgRating || 0;
-        // If rating is 1..10, bondScore = (avgRating / 10) * 100
         bondScore = (avgRating / 10) * 100;
       }
 
-      // -----------------------------------
-      // 4) Defend Drive: same logic as Acquire or different
-      // e.g. "score >= 5" in feedback means some "defend" praise
+      // 4) Defend Drive
       let defendScore = 0;
       {
         const [defRows] = await db.query(`
           SELECT COUNT(*) AS defCount
           FROM feedback
-          WHERE employee_id = ?
-            AND project_id = ?
-            AND score >= 5
+          WHERE employee_id = ? AND project_id = ? AND score >= 5
         `, [employeeId, projectId]);
 
         const defCount = defRows[0].defCount || 0;
-        // scale similarly as Acquire
         defendScore = Math.min(defCount * 10, 100);
       }
 
-      // Weighted sum => final Burnt Score for this employee
       const burntScore =
         wComprehend * comprehendScore +
         wAcquire    * acquireScore    +
@@ -1655,29 +1644,55 @@ app.get("/api/project-burnt-scores", async (req, res) => {
         acquire:    Math.round(acquireScore),
         bond:       Math.round(bondScore),
         defend:     Math.round(defendScore),
-        burntScore: burntScore // or Math.round(burntScore)
+        burntScore: Math.round(burntScore)
       });
     }
 
-    // 5) Team average
     let teamAverage = 0;
     if (teamScores.length > 0) {
       const sum = teamScores.reduce((acc, mem) => acc + mem.burntScore, 0);
       teamAverage = sum / teamScores.length;
     }
 
-    // Return final JSON
+    // Analyze average burnt score
+    function analyzeTeamBurntScore(avgScore) {
+      let insight = "";
+      let recommendation = "";
+
+      if (avgScore >= 80) {
+        insight = "The team is highly engaged and performing efficiently.";
+        recommendation = "Maintain current practices. Consider knowledge-sharing or innovation time.";
+      } else if (avgScore >= 60) {
+        insight = "The team is doing well but may need occasional motivation or recognition.";
+        recommendation = "Introduce small morale-boosting activities and regular feedback loops.";
+      } else if (avgScore >= 40) {
+        insight = "The team is showing early signs of burnout or disengagement.";
+        recommendation = "Conduct 1:1 check-ins, reassess task allocations, and increase recognition.";
+      } else {
+        insight = "The team is at high risk of burnout or low morale.";
+        recommendation = "Immediate intervention needed: re-evaluate workload, introduce breaks, and listen to feedback carefully.";
+      }
+
+      return {
+        averageBurntScore: Math.round(avgScore),
+        insight,
+        recommendation
+      };
+    }
+
+    const teamBurntInsight = analyzeTeamBurntScore(teamAverage);
+
     res.json({
       teamScores,
-      teamAverage
+      teamAverage: Math.round(teamAverage),
+      teamBurntInsight
     });
+
   } catch (error) {
     console.error("Error computing burnt scores:", error);
     res.status(500).json({ error: "Failed to compute burnt scores" });
   }
 });
-
-
 app.post("/api/add-skills", async (req, res) => {
   const { employee_email, skills } = req.body;
 
@@ -1816,7 +1831,6 @@ ${feedback ? "Manager Feedback: " + feedback : ""}
     return res.status(500).json({ error: "Failed to generate tasks preview" });
   }
 });
-
 
 app.post("/api/confirm-tasks", async (req, res) => {
   try {
@@ -2450,7 +2464,17 @@ app.post('/api/assign-resource', async (req, res) => {
 
   try {
     if (resource_type === 'Person') {
-      // insert into the people‑assignment table instead of project_resources
+      // 🔥 First check if already assigned
+      const [existing] = await db.query(
+        `SELECT * FROM project_assignment WHERE employee_id = ? AND project_id = ?`,
+        [resource_id, project_id]
+      );
+
+      if (existing.length > 0) {
+        return res.status(409).json({ message: 'Person already assigned to project.' });
+      }
+
+      // Insert if not already assigned
       await db.query(
         `INSERT INTO project_assignment (employee_id, project_id)
          VALUES (?, ?)`,
@@ -2459,7 +2483,7 @@ app.post('/api/assign-resource', async (req, res) => {
       return res.status(201).json({ assignedPerson: resource_id });
     }
 
-    // otherwise treat it as a physical resource
+    // For physical resources
     const [result] = await db.query(
       `INSERT INTO project_resources
          (project_id, resource_id, quantity_assigned, date_assigned)
@@ -2468,37 +2492,47 @@ app.post('/api/assign-resource', async (req, res) => {
     );
 
     return res.status(201).json({ insertId: result.insertId });
+
   } catch (err) {
     console.error('🔥  Error in /api/assign-resource:', err);
     return res.status(500).json({ error: 'Failed to assign resource: ' + err.message });
   }
 });
 
-app.get('/api/urgency/:projectId', async (req, res) => {
+
+app.get('/urgency', async (req, res) => {
   try {
-    const row = await ChangeManagement.findOne({
-      where: { project_id: req.params.projectId, step: 1 }
-    });
-    res.json(row?.payload || {});          // default empty object
+    const rows = await ChangeManagement.findAll(); // ✅ get all rows
+    res.json(rows);
   } catch (err) {
-    console.error(err); res.status(500).json({ error: 'DB error' });
+    console.error(err);
+    res.status(500).json({ error: 'DB error' });
   }
 });
 
-// POST /api/urgency/:projectId
-app.post('/api/urgency/:projectId', async (req, res) => {
-  const payload = req.body;               // {kpi_gap, comp_threat, story, ...}
+app.post('/urgency', async (req, res) => {
+  const { id, kpi_gap, external_threat, narrative } = req.body;
   try {
-    await ChangeManagement.upsert({
-      project_id: req.params.projectId,
-      step: 1,
-      payload
-    });
-    res.json({ message: 'Urgency saved' });
+    if (id) {
+      // Update existing
+      const [updated] = await ChangeManagement.update(
+        { kpi_gap, external_threat, narrative },
+        { where: { id } }
+      );
+      if (updated === 0) {
+        return res.status(404).json({ error: 'Urgency not found' });
+      }
+    } else {
+      // Create new (without sending id)
+      await ChangeManagement.create({ kpi_gap, external_threat, narrative });
+    }
+    res.json({ message: 'Urgency saved successfully' });
   } catch (err) {
-    console.error(err); res.status(500).json({ error: 'DB error' });
+    console.error('Urgency save error:', err);
+    res.status(500).json({ error: 'DB error' });
   }
 });
+
 
 // Start Server
 const PORT = process.env.PORT || 5000;

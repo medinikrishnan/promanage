@@ -1,7 +1,24 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useDrag, useDrop, DndProvider } from "react-dnd";
 import { HTML5Backend, getEmptyImage } from "react-dnd-html5-backend";
-import { FaBars, FaGamepad, FaHome, FaClipboardList, FaCommentAlt, FaFireAlt, FaProjectDiagram, FaUserCog, FaUsers, FaChartBar, FaTasks, FaLink } from "react-icons/fa";
+import {
+  FaBars,
+  FaBolt,
+  FaCogs,
+  FaHome,
+  FaClipboardList,
+  FaProjectDiagram,
+  FaUserCog,
+  FaUsers,
+  FaChartBar,
+  FaTasks,
+  FaCommentAlt,
+  FaFireAlt,
+  FaNewspaper,
+  FaStar,
+  FaSignOutAlt,
+  FaGamepad,
+} from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import "./ProjectManagerDashboard.css";
 
@@ -200,11 +217,7 @@ const EmployeeAssignment = () => {
           </div>
           <div className="menu-item" onClick={() => navigate("/progress")}>
           <FaChartBar className="icon" /> {!isCollapsed && <span>Progress</span>}
-          </div>
-          <div className="menu-item" onClick={() => navigate("/taskcard")}>
-          <FaTasks className="icon" /> {!isCollapsed && <span>Task Card</span>}
-          </div>
-                        
+          </div>            
           <div className="menu-item" onClick={() => navigate("/myteams")}>
           <FaUsers className="icon" /> {!isCollapsed && <span>Make Teams</span>}
           </div>
@@ -213,10 +226,19 @@ const EmployeeAssignment = () => {
         </div>
 
         <div className="menu-item" onClick={() => navigate("/burnt-score")}>
-        <FaFireAlt className="icon" /> {!isCollapsed && <span>Burnt Score</span>}
+        <FaFireAlt className="icon" /> {!isCollapsed && <span>Team Health</span>}
         </div>
         <div className="menu-item" onClick={() => navigate("/gamify")}>
         <FaGamepad className="icon" />{!isCollapsed && <span>Gamify</span>}
+        </div>
+          <div className="menu-item" onClick={() => navigate("/resource")}>
+            <FaCogs className="icon" /> {!isCollapsed && <span>Resource Management</span>} {/* Added Resource Management Button */}
+          </div>
+          <div className="menu-item" onClick={() =>navigate(`/urgency`)}>
+          <FaBolt className="icon" /> {!isCollapsed && <span>Change Managementt</span>}
+          </div>
+          <div className="menu-item" onClick={() => navigate("/guide")}>
+          <FaBolt className="icon" /> {!isCollapsed && <span>Coalition</span>}
         </div>
       </div>
       </div>

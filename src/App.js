@@ -20,6 +20,7 @@ import ResourceManagement from "./Resource.jsx";
 import AddResource from "./Resource_add.jsx";
 import UrgencyPanel from "./UrgencyPanel.jsx";
 import GuidingCoalitionPanel from "./Guiding.jsx";
+import UrgencyNotification from "./UrgencyNotification.jsx";
 function App() {
   return (
     <Router>
@@ -47,6 +48,7 @@ function App() {
         <Route path="/employee-rating" element={<EmployeeRating />} />
         <Route path="/burnt-score" element={<BurntScorePage />} />
         <Route path="/add-skills" element={<AddSkills />} />
+        <Route path="/employee-urgency" element={<UrgencyNotification />} />
       </Routes>
     </Router>
   );

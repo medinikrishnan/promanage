@@ -1,10 +1,10 @@
-Task: Database Design - Milestone: Create Tables
-Task: Database Design - Milestone: Define Constraints
-Task: Database Design - Milestone: Implement Indexes
-Task: Database Design - Milestone: Optimize Performance
-Task: Database Design - Milestone: Test Database Integrity
-Task: Database Design - Milestone: Identify Entities and Relationships
-Task: Database Design - Milestone: Define Attributes for Entities
-Task: Database Design - Milestone: Establish Primary Keys
-Task: Database Design - Milestone: Set Relationships
-Task: Database Design - Milestone: Normalize Database Schema
+Task: Database Design - Milestone: Identify required tables
+Task: Database Design - Milestone: Design table relationships
+Task: Database Design - Milestone: Create primary keys
+Task: Database Design - Milestone: Establish foreign keys
+Task: Database Design - Milestone: Document database structure
+Task: Backend Development - Milestone: Design user authentication flow
+Task: Backend Development - Milestone: Implement login functionality
+Task: Backend Development - Milestone: Create user roles
+Task: Backend Development - Milestone: Implement password encryption
+Task: Backend Development - Milestone: Test user registration

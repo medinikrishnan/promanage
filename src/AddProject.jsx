@@ -1,19 +1,20 @@
 import React, { useState, useEffect } from "react";
 import {
   FaBars,
+  FaBolt,
+  FaCogs,
   FaHome,
-  FaFireAlt,
-  FaCommentAlt,
   FaClipboardList,
-  FaSignOutAlt,
-  FaStar,
-  FaNewspaper,
   FaProjectDiagram,
   FaUserCog,
   FaUsers,
   FaChartBar,
   FaTasks,
-  FaBolt,
+  FaCommentAlt,
+  FaFireAlt,
+  FaNewspaper,
+  FaStar,
+  FaSignOutAlt,
   FaGamepad,
 } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
@@ -173,9 +174,6 @@ const AddProject = () => {
           <div className="menu-item" onClick={() => navigate("/progress")}>
             <FaChartBar className="icon" /> {!isCollapsed && <span>Progress</span>}
           </div>
-          <div className="menu-item" onClick={() => navigate("/taskcard")}>
-            <FaTasks className="icon" /> {!isCollapsed && <span>Task Card</span>}
-          </div>
           <div className="menu-item" onClick={() => navigate("/myteams")}>
             <FaUsers className="icon" /> {!isCollapsed && <span>Make Teams</span>}
           </div>
@@ -183,14 +181,20 @@ const AddProject = () => {
             <FaCommentAlt className="icon" /> {!isCollapsed && <span>Feed Back Deck</span>}
           </div>
           <div className="menu-item" onClick={() => navigate("/burnt-score")}>
-            <FaFireAlt className="icon" /> {!isCollapsed && <span>Burnt Score</span>}
+            <FaFireAlt className="icon" /> {!isCollapsed && <span>Team Health</span>}
           </div>
           <div className="menu-item" onClick={() => navigate("/gamify")}>
             <FaGamepad className="icon" />{!isCollapsed && <span>Gamify</span>}
           </div>
+          <div className="menu-item" onClick={() => navigate("/resource")}>
+            <FaCogs className="icon" /> {!isCollapsed && <span>Resource Management</span>} {/* Added Resource Management Button */}
+          </div>
           <div className="menu-item" onClick={() =>navigate(`/urgency`)}>
           <FaBolt className="icon" /> {!isCollapsed && <span>Change Managementt</span>}
           </div>
+          <div className="menu-item" onClick={() => navigate("/guide")}>
+          <FaBolt className="icon" /> {!isCollapsed && <span>Coalition</span>}
+        </div>
         </div>
       </div>
 

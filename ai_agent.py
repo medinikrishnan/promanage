@@ -15,19 +15,20 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.options import Options
 
+from colorama import init, Fore, Style
+init(autoreset=True)
+
 # -----------------------------
 # Load environment variables
 # -----------------------------
 load_dotenv()
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
-
 def get_last_n_files(dir_path, patterns, n=3):
     files = []
     for pat in patterns:
         files.extend(glob.glob(os.path.join(dir_path, pat)))
     return sorted(set(files), key=os.path.getmtime, reverse=True)[:n]
-
 
 def check_milestones_from_text(aggregated_text, domain, model="gpt-4"):
     system_msg = {
@@ -59,7 +60,6 @@ Example:
         temperature=0
     )
     return resp.choices[0].message.content.strip()
-
 def mark_specific_milestone_completed(milestone_name, employee_email):
     """
     Uses Selenium to log in, navigate to My Milestones in your React sidebar,
@@ -84,7 +84,6 @@ def mark_specific_milestone_completed(milestone_name, employee_email):
         driver.find_element(By.XPATH, "//button[@type='submit']").click()
 
         # 2) Click "My Milestones" in the sidebar
-        #    We look for the <span> with exactly that text
         milestones_btn = wait.until(EC.element_to_be_clickable((
             By.XPATH,
             "//span[normalize-space(text())='My Milestones']"
@@ -92,7 +91,7 @@ def mark_specific_milestone_completed(milestone_name, employee_email):
         driver.execute_script("arguments[0].click();", milestones_btn)
         time.sleep(2)  # let the page render
 
-        # 3) Find the <li> containing our milestone_name and click its Complete button
+        # 3) Find the milestone and complete it
         items = driver.find_elements(By.XPATH, "//li")
         target = None
         for li in items:
@@ -101,7 +100,7 @@ def mark_specific_milestone_completed(milestone_name, employee_email):
                 break
 
         if not target:
-            print(f"[ERROR] Could not find milestone on page: {milestone_name}")
+            print(Fore.RED + Style.BRIGHT + f"[ERROR] Could not find milestone: {milestone_name}")
             return
 
         complete_btn = target.find_element(
@@ -109,48 +108,44 @@ def mark_specific_milestone_completed(milestone_name, employee_email):
             ".//button[contains(translate(., 'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'), 'complete')]"
         )
         driver.execute_script("arguments[0].click();", complete_btn)
-        print(f"[DONE] '{milestone_name}' marked complete.")
+        print(Fore.GREEN + Style.BRIGHT + f"[DONE] '{milestone_name}' marked complete.")
 
     except Exception as e:
-        print(f"[ERROR] Selenium error for '{milestone_name}': {e}")
+        print(Fore.RED + Style.BRIGHT + f"[ERROR] Selenium error for '{milestone_name}': {e}")
     finally:
         driver.quit()
 
-
-
 def main():
     if len(sys.argv) != 4:
-        print("Usage: python ai_agent.py <path_or_dir> <domain> <employee_email>")
+        print(Fore.RED + Style.BRIGHT + "Usage: python ai_agent.py <path_or_dir> <domain> <employee_email>")
         sys.exit(1)
 
     path_or_dir, domain, employee_email = sys.argv[1], sys.argv[2], sys.argv[3]
 
-    # Always scan the folder
     if os.path.isdir(path_or_dir):
         dir_to_scan = path_or_dir
     elif os.path.isfile(path_or_dir):
         dir_to_scan = os.path.dirname(path_or_dir) or '.'
     else:
-        print(f"[ERROR] '{path_or_dir}' is not a file or directory.")
+        print(Fore.RED + Style.BRIGHT + f"[ERROR] '{path_or_dir}' is not a valid path.")
         sys.exit(1)
 
-    patterns = ["*.txt", "*.html", "*.js","*.css","*.py"]
+    patterns = ["*.txt", "*.html", "*.js", "*.css", "*.py"]
     last_three = get_last_n_files(dir_to_scan, patterns, n=3)
     if not last_three:
-        print(f"[ERROR] No files matching {patterns} in {dir_to_scan}")
+        print(Fore.RED + Style.BRIGHT + f"[ERROR] No files matching {patterns} in {dir_to_scan}")
         sys.exit(1)
 
-    print("Checking these files (newest first):")
+    print(Fore.CYAN + "Checking these files (newest first):")
     for fp in last_three:
-        print(" -", fp)
+        print(Fore.CYAN + " -", fp)
 
-    # Extract raw milestone names
     all_milestones = []
     for fp in last_three:
         try:
             text = open(fp, 'r', encoding='utf-8', errors='ignore').read()
         except Exception as e:
-            print(f"[ERROR] reading {fp}: {e}")
+            print(Fore.RED + Style.BRIGHT + f"[ERROR] reading {fp}: {e}")
             continue
 
         for line in text.splitlines():
@@ -160,38 +155,37 @@ def main():
                     all_milestones.append(name)
 
     if not all_milestones:
-        print("[INFO] No milestones found in files.")
+        print(Fore.YELLOW + "[INFO] No milestones found.")
         sys.exit(0)
 
     aggregated = "\n".join(all_milestones)
     try:
         raw = check_milestones_from_text(aggregated, domain, model="gpt-4")
     except RateLimitError:
-        print("[WARN] GPT-4 limit hit, retrying with gpt-3.5-turbo")
+        print(Fore.YELLOW + "[WARN] GPT-4 limit hit, retrying with gpt-3.5-turbo")
         raw = check_milestones_from_text(aggregated, domain, model="gpt-3.5-turbo")
 
     try:
         milestone_status = json.loads(raw)
     except Exception as e:
-        print(f"[ERROR] Could not parse JSON from AI: {e}")
-        print("Raw AI response:", raw)
+        print(Fore.RED + Style.BRIGHT + f"[ERROR] Could not parse JSON from AI: {e}")
+        print(Fore.RED + "Raw AI response:", raw)
         sys.exit(1)
 
     not_done = []
     for ms, stat in milestone_status.items():
         if stat.strip().upper() == "YES":
-            print("AI -> YES:", ms)
+            print(Fore.GREEN + Style.BRIGHT + "AI -> YES:", ms)
             mark_specific_milestone_completed(ms, employee_email)
         else:
             not_done.append(ms)
 
     if not_done:
-        print("\nMilestones NOT completed:")
+        print(Fore.YELLOW + Style.BRIGHT + "\nMilestones NOT completed:")
         for m in not_done:
-            print(" -", m)
+            print(Fore.YELLOW + " -", m)
     else:
-        print("\nAll detected milestones were marked completed.")
-
+        print(Fore.GREEN + Style.BRIGHT + "\nAll detected milestones were marked completed.")
 
 if __name__ == "__main__":
     main()

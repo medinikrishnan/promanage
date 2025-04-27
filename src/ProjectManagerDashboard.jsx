@@ -307,9 +307,6 @@ const ProjectManagerDashboard = () => {
           <div className="menu-item" onClick={() => navigate("/progress")}>
             <FaChartBar className="icon" /> {!isCollapsed && <span>Progress</span>}
           </div>
-          <div className="menu-item" onClick={() => navigate("/taskcard")}>
-            <FaTasks className="icon" /> {!isCollapsed && <span>Task Card</span>}
-          </div>
           <div className="menu-item" onClick={() => navigate("/myteams")}>
             <FaUsers className="icon" /> {!isCollapsed && <span>Make Teams</span>}
           </div>
@@ -317,7 +314,7 @@ const ProjectManagerDashboard = () => {
             <FaCommentAlt className="icon" /> {!isCollapsed && <span>Feed Back Deck</span>}
           </div>
           <div className="menu-item" onClick={() => navigate("/burnt-score")}>
-            <FaFireAlt className="icon" /> {!isCollapsed && <span>Burnt Score</span>}
+            <FaFireAlt className="icon" /> {!isCollapsed && <span>Team Health</span>}
           </div>
           <div className="menu-item" onClick={() => navigate("/gamify")}>
           <FaGamepad className="icon" />{!isCollapsed && <span>Gamify</span>}

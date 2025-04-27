@@ -3,21 +3,21 @@ import { DndProvider, useDrag, useDrop } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
 import {
   FaBars,
+  FaBolt,
+  FaCogs,
   FaHome,
+  FaClipboardList,
   FaProjectDiagram,
   FaUserCog,
-  FaClipboardList,
+  FaUsers,
   FaChartBar,
   FaTasks,
-  FaUsers,
   FaCommentAlt,
   FaFireAlt,
-  FaSignOutAlt,
-  FaStar,
   FaNewspaper,
-  FaBolt,
+  FaStar,
+  FaSignOutAlt,
   FaGamepad,
-  FaStar as StarIcon
 } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import "./ProjectManagerDashboard.css";
@@ -25,6 +25,7 @@ import "./RatingPopup.css";
 import "./UpdateFeed.css";
 
 const ItemTypes = { PERSON: "person" };
+
 const initials = name =>
   name
     .split(" ")
@@ -52,7 +53,7 @@ const PersonCard = ({ person, onStarClick }) => {
         {onStarClick && (
           <span className="stars">
             {[1, 2, 3, 4, 5].map(n => (
-              <StarIcon
+              <FaStar
                 key={n}
                 className={person.influence >= n ? "star filled" : "star"}
                 onClick={() => onStarClick(person.id, n)}
@@ -97,10 +98,12 @@ const CoalitionBoard = () => {
     setCoalition(c => [...c, { ...p, influence: 3 }]);
     setAllPeople(all => all.filter(e => e.id !== p.id));
   };
+
   const removeFromCoalition = p => {
     setAllPeople(all => [...all, { id: p.id, name: p.name }]);
     setCoalition(c => c.filter(e => e.id !== p.id));
   };
+
   const setInfluence = (id, val) =>
     setCoalition(c =>
       c.map(e => (e.id === id ? { ...e, influence: val } : e))
@@ -156,9 +159,6 @@ const GuidingCoalitionPage = () => {
           <div className="menu-item" onClick={() => navigate("/progress")}>
             <FaChartBar className="icon" /> {!collapsed && <span>Progress</span>}
           </div>
-          <div className="menu-item" onClick={() => navigate("/taskcard")}>
-            <FaTasks className="icon" /> {!collapsed && <span>Task Card</span>}
-          </div>
           <div className="menu-item" onClick={() => navigate("/myteams")}>
             <FaUsers className="icon" /> {!collapsed && <span>Make Teams</span>}
           </div>
@@ -166,13 +166,19 @@ const GuidingCoalitionPage = () => {
             <FaCommentAlt className="icon" /> {!collapsed && <span>Feedback Deck</span>}
           </div>
           <div className="menu-item" onClick={() => navigate("/burnt-score")}>
-            <FaFireAlt className="icon" /> {!collapsed && <span>Burnt Score</span>}
-          </div>
-          <div className="menu-item active">
-            <FaBolt className="icon" /> {!collapsed && <span>Coalition</span>}
+            <FaFireAlt className="icon" /> {!collapsed && <span>Team Health</span>}
           </div>
           <div className="menu-item" onClick={() => navigate("/gamify")}>
             <FaGamepad className="icon" /> {!collapsed && <span>Gamify</span>}
+          </div>
+          <div className="menu-item" onClick={() => navigate("/resource")}>
+            <FaCogs className="icon" /> {!collapsed && <span>Resource Management</span>}
+          </div>
+          <div className="menu-item" onClick={() => navigate("/urgency")}>
+            <FaBolt className="icon" /> {!collapsed && <span>Change Management</span>}
+          </div>
+          <div className="menu-item" onClick={() => navigate("/guide")}>
+            <FaBolt className="icon" /> {!collapsed && <span>Coalition</span>}
           </div>
         </div>
       </div>
@@ -193,72 +199,103 @@ const GuidingCoalitionPage = () => {
           </div>
           <h3>SwiftCollab</h3>
         </div>
+        <p style={{ 
+          textAlign: "center", 
+          fontStyle: "italic", 
+          fontSize: "1.1rem", 
+          color: "#aaa", 
+          marginTop: "10px", 
+          marginBottom: "30px" 
+        }}>
+          "Coalitions don’t just support change — they ignite it."
+        </p>
 
         <div className="content-wrap">
-          <h2 style={{ marginTop: 0 }}>👥 Build a Guiding Coalition</h2>
+          <h2 style={{ marginTop: 0, textAlign: "center" }}>👥 Build a Guiding Coalition</h2>
+
+          
           <CoalitionBoard />
         </div>
       </div>
 
-      {/* In-file overrides */}
+      {/* In-file CSS overrides */}
       <style>{`
-        .coalition-board {
-          display: flex;
-          gap: 24px;
-        }
-        /* Widen both white panels */
-        .column {
-          flex: 0 0 calc(50% - 12px);
-          background: #fafbfe;
-          border: 1px solid #ddd;
-          border-radius: 6px;
-          padding: 16px;
-          min-height: 420px;
-        }
-        .column.over { background: #e7f2ff; }
-        .column h3 { margin-bottom: 10px; color: #333; }
-        .placeholder { color: #888; font-style: italic; }
+      .coalition-board {
+        display: flex;
+        justify-content: center;
+        align-items: stretch;
+        gap: 30px;
+        padding: 20px;
+        width: 100%;
+        max-width: 1400px;
+        margin: auto;
+        box-sizing: border-box;
+      }
 
-        /* Make each card fill its panel */
-        .person-card {
-          width: 100%;
-          display: flex;
-          gap: 12px;
-          align-items: center;
-          background: #fff;
-          border: 1px solid #ddd;
-          padding: 10px 14px;
-          border-radius: 4px;
-          margin-bottom: 10px;
-          cursor: grab;
-        }
-        .avatar {
-          width: 38px;
-          height: 38px;
-          border-radius: 50%;
-          background: #0066ff;
-          color: #fff;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-weight: 600;
-        }
-        .info {
-          flex: 1;
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-        }
-        /* Larger names */
-        .name {
-          font-weight: 500;
-          color: #000;
-          font-size: 1.2rem;
-        }
-        .stars { display: flex; gap: 3px; }
-        .star { color: #ccc; cursor: pointer; }
-        .star.filled { color: #f6b400; }
-      `}</style>
+      .column {
+        flex: 0 0 45%;
+        display: flex;
+        flex-direction: column;
+        background: #fafbfe;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        padding: 28px;
+        min-height: 500px;
+      }
+
+      .column.over { background: #e7f2ff; }
+      .column h3 { margin-bottom: 14px; color: #333; font-size: 1.5rem; }
+      .placeholder { color: #888; font-style: italic; margin-top: 20px; }
+
+      .person-card {
+        width: 100%;
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        background: #fff;
+        border: 1px solid #ddd;
+        padding: 14px 18px;
+        border-radius: 8px;
+        margin-bottom: 12px;
+        cursor: grab;
+        transition: box-shadow 0.2s ease;
+      }
+
+      .person-card:hover {
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+      }
+
+      .avatar {
+        width: 42px;
+        height: 42px;
+        border-radius: 50%;
+        background: #0066ff;
+        color: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+        font-size: 1.1rem;
+      }
+
+      .info {
+        flex: 1;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .name {
+        font-weight: 500;
+        color: #000;
+        font-size: 1.2rem;
+      }
+
+      .stars { display: flex; gap: 3px; }
+      .star { color: #ccc; cursor: pointer; }
+      .star.filled { color: #f6b400; }
+    `}</style>
+
     </div>
   );
 };

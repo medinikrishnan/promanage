@@ -144,6 +144,7 @@ const Milestones = () => {
           <div className="menu-item" onClick={() => navigate("/employee-rating")}>
             <FaStar className="icon" /> {!isCollapsed && <span>Employee Rating</span>}
           </div>
+          
         </div>
       </div>
 
